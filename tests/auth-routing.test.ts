@@ -25,13 +25,13 @@ describe("Supabase Authentication & Dashboard Routing Rules", () => {
     vi.clearAllMocks();
   });
 
-  it("redirects root '/' to '/login' for every user opening the website", async () => {
+  it("allows access to root '/' as public landing page without redirecting to login", async () => {
     const req = new NextRequest("http://localhost:3000/");
     const res = await (proxyMiddleware as any)(req);
 
-    expect(res.status).toBe(307);
+    expect(res.status).not.toBe(307);
     const location = res.headers.get("location");
-    expect(location).toBe("http://localhost:3000/login");
+    expect(location).toBeNull();
   });
 
   it("allows access to '/login' and preserves valid authentication cookies across navigation", async () => {

@@ -80,11 +80,6 @@ export default async function middleware(request: NextRequest) {
     return res;
   }
 
-  // 1. Every user (registered or unregistered) opening root "/" lands on the login page first
-  if (pathname === "/") {
-    return withRequestId(NextResponse.redirect(new URL("/login", request.url)));
-  }
-
   // 2. Allow everyone to access public authentication pages (login, signup, forgot password, reset password, auth callbacks)
   // Preserve valid Supabase sessions across navigation and refreshes — never clear valid cookies on /login.
   if (
