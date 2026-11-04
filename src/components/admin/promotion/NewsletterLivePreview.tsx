@@ -138,11 +138,15 @@ export function NewsletterLivePreview({
 
         {/* Action Button */}
         <div className="pt-2">
-          <span
-            className={`inline-block text-xs font-semibold px-4 py-2 transition-all ${t.button}`}
+          <a
+            href={buttonUrl || "https://linq.avtive.com"}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.preventDefault()}
+            className={`inline-block text-xs font-semibold px-4 py-2 transition-all cursor-default ${t.button}`}
           >
             {buttonText || "Open Attendee Card"}
-          </span>
+          </a>
         </div>
 
         {/* Footer */}

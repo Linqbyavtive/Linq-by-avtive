@@ -45,6 +45,54 @@ const THEME_OPTIONS: { id: PromotionTheme; label: string; swatch: string }[] = [
   { id: "event", label: "Event", swatch: "#EA580C" },
 ];
 
+function getModalInitialForm(
+  template: PromotionTemplate | null,
+  channel: PromotionChannel,
+  eventId?: string,
+): ChannelEditorState {
+  if (!template) {
+    return {
+      subject: "",
+      heading: "",
+      message: "",
+      imageUrl: "",
+      buttonText: channel === "newsletter" ? "Open Attendee Card" : "",
+      buttonUrl: "https://linq.avtive.com",
+      attachmentUrl: "",
+      attachmentName: "",
+      caption: "",
+      theme: "default",
+    };
+  }
+
+  let initialData: ChannelEditorState = {
+    subject: template.subject || "",
+    heading: template.heading || "",
+    message: template.message || "",
+    imageUrl: template.imageUrl || "",
+    buttonText: template.buttonText || (channel === "newsletter" ? "Open Attendee Card" : ""),
+    buttonUrl: template.buttonUrl || "https://linq.avtive.com",
+    attachmentUrl: template.attachmentUrl || "",
+    attachmentName: template.attachmentName || "",
+    caption: template.caption || "",
+    theme: template.theme || "default",
+  };
+
+  try {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(
+        `linq_tpl_draft_${eventId || "global"}_${template.id}`,
+      );
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        initialData = { ...initialData, ...parsed };
+      }
+    }
+  } catch {}
+
+  return initialData;
+}
+
 export function TemplateEditorModal({
   open,
   onOpenChange,
@@ -54,18 +102,15 @@ export function TemplateEditorModal({
   eventName,
   onSendSuccess,
 }: TemplateEditorModalProps) {
-  const [form, setForm] = useState<ChannelEditorState>({
-    subject: "",
-    heading: "",
-    message: "",
-    imageUrl: "",
-    buttonText: "",
-    buttonUrl: "",
-    attachmentUrl: "",
-    attachmentName: "",
-    caption: "",
-    theme: "default",
-  });
+  const [prevTemplateId, setPrevTemplateId] = useState(template?.id);
+  const [form, setForm] = useState<ChannelEditorState>(() =>
+    getModalInitialForm(template, channel, eventId),
+  );
+
+  if (template && template.id !== prevTemplateId) {
+    setPrevTemplateId(template.id);
+    setForm(getModalInitialForm(template, channel, eventId));
+  }
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -89,37 +134,6 @@ export function TemplateEditorModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (template) {
-      let initialData: ChannelEditorState = {
-        subject: template.subject || "",
-        heading: template.heading || "",
-        message: template.message || "",
-        imageUrl: template.imageUrl || "",
-        buttonText: template.buttonText || (channel === "newsletter" ? "Open Attendee Card" : ""),
-        buttonUrl: template.buttonUrl || "https://linq.avtive.com",
-        attachmentUrl: template.attachmentUrl || "",
-        attachmentName: template.attachmentName || "",
-        caption: template.caption || "",
-        theme: template.theme || "default",
-      };
-
-      try {
-        if (typeof window !== "undefined") {
-          const saved = localStorage.getItem(
-            `linq_tpl_draft_${eventId || "global"}_${template.id}`,
-          );
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            initialData = { ...initialData, ...parsed };
-          }
-        }
-      } catch {}
-
-      setForm(initialData);
-    }
-  }, [template, eventId, channel]);
 
   const handleSave = () => {
     try {

@@ -19,26 +19,27 @@ const DEFAULT_ROLES: TeamAccessRole[] = [
   { id: "event_team", label: "Event Team", enabled: false },
 ];
 
-export function TeamAccessDialog({ open, onOpenChange, eventId }: TeamAccessDialogProps) {
-  const [roles, setRoles] = useState<TeamAccessRole[]>(DEFAULT_ROLES);
-  const [isSaving, setIsSaving] = useState(false);
-  const storageKey = eventId ? `linq_promotion_team_access_${eventId}` : "linq_promotion_team_access";
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setRoles(parsed);
-          }
+function getStoredRoles(storageKey: string): TeamAccessRole[] {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-      } catch {
-        // Fallback to default
       }
+    } catch {
+      // Fallback
     }
-  }, [open, storageKey]);
+  }
+  return DEFAULT_ROLES;
+}
+
+export function TeamAccessDialog({ open, onOpenChange, eventId }: TeamAccessDialogProps) {
+  const storageKey = eventId ? `linq_promotion_team_access_${eventId}` : "linq_promotion_team_access";
+  const [roles, setRoles] = useState<TeamAccessRole[]>(() => getStoredRoles(storageKey));
+  const [isSaving, setIsSaving] = useState(false);
 
   const toggleRole = (roleId: string) => {
     if (roleId === "admin") return;

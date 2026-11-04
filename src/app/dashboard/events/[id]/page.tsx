@@ -499,7 +499,7 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
           });
           setIsEditOpen(true);
         } else if (searchParams.get("promotion") === "true" || searchParams.get("tab") === "promotion") {
-          router.push(`/dashboard/promotions?eventId=${id}&eventName=${encodeURIComponent(String(eventRecord.name || ""))}`);
+          router.push(`/dashboard/events/${id}/promotions`);
         }
 
         const [memberResult, attendeeRes] = await Promise.all([
@@ -1899,7 +1899,7 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
                 )}
                 <ShadButton
                   variant="secondary"
-                  onClick={() => router.push(`/dashboard/promotions?eventId=${eventData.id}&eventName=${encodeURIComponent(eventData.name)}`)}
+                  onClick={() => router.push(`/dashboard/events/${eventData.id}/promotions`)}
                   className="transition-shadow duration-200 hover:shadow-md hover:border-primary/50 hover:bg-primary/9 border-primary/30 text-primary hover:text-primary-strong cursor-pointer"
                 >
                   <Megaphone size={16} />

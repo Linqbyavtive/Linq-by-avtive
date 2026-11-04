@@ -83,7 +83,7 @@ export default async function EventPromotionsPage({ params }: EventPromotionsPag
             </div>
           }
         >
-          <PromotionChannelSelect eventId={eventId} eventName={eventName} />
+          <PromotionChannelSelect eventId={eventId} eventName={eventName} hideTopBack={true} />
         </Suspense>
       </div>
     </div>

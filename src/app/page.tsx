@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import LinqLanding from "@/components/landing/linq-landing";
 
 export default function HomePage() {
-  redirect("/login");
+  return <LinqLanding />;
 }
-

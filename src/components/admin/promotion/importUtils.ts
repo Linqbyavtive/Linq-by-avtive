@@ -24,6 +24,7 @@ export type ImportResult =
       type: "spreadsheet";
       headers: string[];
       sampleRows: Record<string, string>[];
+      allRows?: Record<string, string>[];
       totalRows: number;
       fileName: string;
     }
@@ -245,19 +246,24 @@ export async function parsePromotionImportFile(file: File): Promise<ImportResult
         .map((h) => h.replace(/^["']|["']$/g, "").trim());
 
       const sampleRows: Record<string, string>[] = [];
-      for (let i = 1; i < Math.min(lines.length, 6); i++) {
+      const allRows: Record<string, string>[] = [];
+      for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(delimiter).map((c) => c.replace(/^["']|["']$/g, "").trim());
         const rowObj: Record<string, string> = {};
         headers.forEach((h, idx) => {
           rowObj[h || `Col_${idx + 1}`] = cols[idx] || "";
         });
-        sampleRows.push(rowObj);
+        if (sampleRows.length < 5) {
+          sampleRows.push(rowObj);
+        }
+        allRows.push(rowObj);
       }
 
       return {
         type: "spreadsheet",
         headers,
         sampleRows,
+        allRows,
         totalRows: lines.length - 1,
         fileName: file.name,
       };

@@ -2090,7 +2090,7 @@ function DashboardContent() {
                         size="xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/dashboard/promotions?eventId=${evt.id}&eventName=${encodeURIComponent(evt.name)}`);
+                          router.push(`/dashboard/events/${evt.id}/promotions`);
                         }}
                         className="text-xs h-7 px-2.5 font-medium border border-primary/30 bg-primary/8 text-primary hover:bg-primary/15 transition-colors cursor-pointer"
                       >

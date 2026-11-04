@@ -12,6 +12,7 @@ interface SpreadsheetImportModalProps {
   fileName: string;
   headers: string[];
   sampleRows: Record<string, string>[];
+  allRows?: Record<string, string>[];
   totalRows: number;
   eventId?: string;
   eventName?: string;
@@ -25,6 +26,7 @@ export function SpreadsheetImportModal({
   fileName,
   headers,
   sampleRows,
+  allRows,
   totalRows,
   eventId,
   eventName,
@@ -55,7 +57,8 @@ export function SpreadsheetImportModal({
       const companyCol = headers.find((h) => /company|org|organization/i.test(h));
       const roleCol = headers.find((h) => /role|title|position/i.test(h));
 
-      const recipients = sampleRows.map((row) => ({
+      const rowsToImport = allRows && allRows.length > 0 ? allRows : sampleRows;
+      const recipients = rowsToImport.map((row) => ({
         name: row[nameCol] || "",
         email: emailCol ? row[emailCol] : "",
         linkedin: linkedinCol ? row[linkedinCol] : "",

@@ -114,6 +114,40 @@ describe("Promotion Feature Improvements", () => {
       }
     });
 
+    it("parses all data rows into allRows when CSV contains more than 5 rows, while capping sampleRows at 5", async () => {
+      const rows = Array.from({ length: 12 }, (_, i) => `Attendee ${i + 1},att${i + 1}@example.com,Company ${i + 1}`);
+      const csvContent = ["Full Name,Email,Company", ...rows].join("\n");
+      const file = new File([csvContent], "large_attendees.csv", { type: "text/csv" });
+
+      const result = await parsePromotionImportFile(file);
+      expect(result.type).toBe("spreadsheet");
+      if (result.type === "spreadsheet") {
+        expect(result.totalRows).toBe(12);
+        expect(result.sampleRows.length).toBe(5);
+        expect(result.allRows).toBeDefined();
+        expect(result.allRows?.length).toBe(12);
+        expect(result.allRows?.[0]["Full Name"]).toBe("Attendee 1");
+        expect(result.allRows?.[0]["Email"]).toBe("att1@example.com");
+        expect(result.allRows?.[11]["Full Name"]).toBe("Attendee 12");
+        expect(result.allRows?.[11]["Email"]).toBe("att12@example.com");
+      }
+    });
+
+    it("parses TSV spreadsheet with tab delimiter and captures allRows", async () => {
+      const tsvContent = "Name\tEmail\nUser 1\tu1@test.com\nUser 2\tu2@test.com\nUser 3\tu3@test.com";
+      const file = new File([tsvContent], "attendees.tsv", { type: "text/tab-separated-values" });
+
+      const result = await parsePromotionImportFile(file);
+      expect(result.type).toBe("spreadsheet");
+      if (result.type === "spreadsheet") {
+        expect(result.headers).toEqual(["Name", "Email"]);
+        expect(result.totalRows).toBe(3);
+        expect(result.sampleRows.length).toBe(3);
+        expect(result.allRows?.length).toBe(3);
+        expect(result.allRows?.[2]["Name"]).toBe("User 3");
+      }
+    });
+
     it("handles image files and returns data url", async () => {
       const blob = new Blob(["fake-image-bytes"], { type: "image/png" });
       const file = new File([blob], "banner.png", { type: "image/png" });

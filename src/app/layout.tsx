@@ -26,8 +26,9 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Linq — Your Conference Card",
-  description: "Register once. Generate a card for every event you attend.",
+  title: "Linq — Event Registration & Attendee Management Platform",
+  description:
+    "Linq helps organizations and event creators manage event registration, issue scannable attendee cards, track event attendance and bring people together.",
 };
 
 export const viewport: Viewport = {
@@ -41,7 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${dmSans.variable} ${dmMono.variable} font-sans`}
+      className={`${dmSans.variable} ${dmMono.variable} font-sans scroll-smooth`}
     >
       <body suppressHydrationWarning className={dmSans.className}>
         <Toaster position="top-center" richColors />

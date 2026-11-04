@@ -93,6 +93,40 @@ interface PromotionChannelSelectProps {
   eventName?: string;
   onBack?: () => void;
   defaultChannel?: PromotionChannel;
+  hideTopBack?: boolean;
+}
+
+function getInitialEditorForm(
+  tpl: PromotionTemplate,
+  eventId?: string,
+): ChannelEditorState {
+  let initialData: ChannelEditorState = {
+    subject: tpl.subject || "",
+    heading: tpl.heading || "",
+    message: tpl.message || "",
+    imageUrl: tpl.imageUrl || "",
+    buttonText:
+      tpl.buttonText ||
+      (tpl.channel === "newsletter" ? "Open Attendee Card" : ""),
+    buttonUrl: tpl.buttonUrl || "https://linq.avtive.com",
+    attachmentUrl: tpl.attachmentUrl || "",
+    attachmentName: tpl.attachmentName || "",
+    caption: tpl.caption || "",
+    theme: tpl.theme || "default",
+  };
+
+  try {
+    if (typeof window !== "undefined") {
+      const draftKey = `linq_tpl_draft_${eventId || "global"}_${tpl.id}`;
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        initialData = { ...initialData, ...parsed };
+      }
+    }
+  } catch {}
+
+  return initialData;
 }
 
 export function PromotionChannelSelect({
@@ -100,6 +134,7 @@ export function PromotionChannelSelect({
   eventName: propEventName,
   onBack,
   defaultChannel = "newsletter",
+  hideTopBack = false,
 }: PromotionChannelSelectProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -154,12 +189,14 @@ export function PromotionChannelSelect({
     fileName: string;
     headers: string[];
     sampleRows: Record<string, string>[];
+    allRows?: Record<string, string>[];
     totalRows: number;
   }>({
     open: false,
     fileName: "",
     headers: [],
     sampleRows: [],
+    allRows: [],
     totalRows: 0,
   });
 
@@ -167,41 +204,9 @@ export function PromotionChannelSelect({
   const editorFileInputRef = useRef<HTMLInputElement>(null);
   const editorAttachmentInputRef = useRef<HTMLInputElement>(null);
 
-  // Load editor data when a template is selected
-  useEffect(() => {
-    if (selectedTemplate) {
-      let initialData: ChannelEditorState = {
-        subject: selectedTemplate.subject || "",
-        heading: selectedTemplate.heading || "",
-        message: selectedTemplate.message || "",
-        imageUrl: selectedTemplate.imageUrl || "",
-        buttonText:
-          selectedTemplate.buttonText ||
-          (selectedTemplate.channel === "newsletter" ? "Open Attendee Card" : ""),
-        buttonUrl: selectedTemplate.buttonUrl || "https://linq.avtive.com",
-        attachmentUrl: selectedTemplate.attachmentUrl || "",
-        attachmentName: selectedTemplate.attachmentName || "",
-        caption: selectedTemplate.caption || "",
-        theme: selectedTemplate.theme || "default",
-      };
-
-      try {
-        if (typeof window !== "undefined") {
-          const draftKey = `linq_tpl_draft_${eventId || "global"}_${selectedTemplate.id}`;
-          const saved = localStorage.getItem(draftKey);
-          if (saved) {
-            const parsed = JSON.parse(saved);
-            initialData = { ...initialData, ...parsed };
-          }
-        }
-      } catch {}
-
-      setForm(initialData);
-    }
-  }, [selectedTemplate, eventId]);
-
   const handleSelectTemplate = (tpl: PromotionTemplate) => {
     setSelectedTemplate(tpl);
+    setForm(getInitialEditorForm(tpl, eventId));
     setViewMode("edit");
     setMobileTab("edit");
   };
@@ -213,6 +218,7 @@ export function PromotionChannelSelect({
       const firstTpl = channelTemplates[channelId]?.[0] || null;
       if (firstTpl) {
         setSelectedTemplate(firstTpl);
+        setForm(getInitialEditorForm(firstTpl, eventId));
       } else {
         setViewMode("list");
       }
@@ -302,6 +308,7 @@ export function PromotionChannelSelect({
             [activeChannel]: [newTemplate, ...prev[activeChannel].slice(0, 2)],
           }));
           setSelectedTemplate(newTemplate);
+          setForm(getInitialEditorForm(newTemplate, eventId));
           setViewMode("edit");
           toast.success("Document text imported into editor");
         } else if (result.type === "image") {
@@ -321,6 +328,7 @@ export function PromotionChannelSelect({
             [activeChannel]: [newTemplate, ...prev[activeChannel].slice(0, 2)],
           }));
           setSelectedTemplate(newTemplate);
+          setForm(getInitialEditorForm(newTemplate, eventId));
           setViewMode("edit");
           toast.success("Image template created");
         } else if (result.type === "attachment") {
@@ -341,6 +349,7 @@ export function PromotionChannelSelect({
             [activeChannel]: [newTemplate, ...prev[activeChannel].slice(0, 2)],
           }));
           setSelectedTemplate(newTemplate);
+          setForm(getInitialEditorForm(newTemplate, eventId));
           setViewMode("edit");
           toast.success("File attached to new template");
         } else if (result.type === "spreadsheet") {
@@ -349,6 +358,7 @@ export function PromotionChannelSelect({
             fileName: result.fileName,
             headers: result.headers,
             sampleRows: result.sampleRows,
+            allRows: result.allRows,
             totalRows: result.totalRows,
           });
         } else if (result.type === "unsupported") {
@@ -380,6 +390,7 @@ export function PromotionChannelSelect({
             fileName: result.fileName,
             headers: result.headers,
             sampleRows: result.sampleRows,
+            allRows: result.allRows,
             totalRows: result.totalRows,
           });
         } else if (result.type === "unsupported") {
@@ -412,33 +423,47 @@ export function PromotionChannelSelect({
       {/* 1. TOP PAGE HEADER */}
       <div className="flex flex-col gap-4 border-b border-border/40 pb-5">
         {/* Back navigation button */}
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={handleBackToNavigation}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-heading transition-colors cursor-pointer group -ml-1 py-1"
-          >
-            <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>
-              {eventId
-                ? eventName
-                  ? `Back to ${eventName}`
-                  : "Back to Campaign"
-                : "Back to Dashboard"}
-            </span>
-          </button>
+        {!hideTopBack ? (
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={handleBackToNavigation}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-heading transition-colors cursor-pointer group -ml-1 py-1"
+            >
+              <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+              <span>
+                {eventId
+                  ? eventName
+                    ? `Back to ${eventName}`
+                    : "Back to Campaign"
+                  : "Back to Dashboard"}
+              </span>
+            </button>
 
-          {/* Team Access dialog button */}
-          <ShadButton
-            variant="outline"
-            size="sm"
-            onClick={() => setIsTeamAccessOpen(true)}
-            className="text-xs h-8 gap-1.5 border-border/60 text-heading hover:bg-slate-50 cursor-pointer"
-          >
-            <Shield size={13} className="text-muted" />
-            Team Access
-          </ShadButton>
-        </div>
+            {/* Team Access dialog button */}
+            <ShadButton
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTeamAccessOpen(true)}
+              className="text-xs h-8 gap-1.5 border-border/60 text-heading hover:bg-slate-50 cursor-pointer"
+            >
+              <Shield size={13} className="text-muted" />
+              Team Access
+            </ShadButton>
+          </div>
+        ) : (
+          <div className="flex items-center justify-end">
+            <ShadButton
+              variant="outline"
+              size="sm"
+              onClick={() => setIsTeamAccessOpen(true)}
+              className="text-xs h-8 gap-1.5 border-border/60 text-heading hover:bg-slate-50 cursor-pointer"
+            >
+              <Shield size={13} className="text-muted" />
+              Team Access
+            </ShadButton>
+          </div>
+        )}
 
         {/* Title row */}
         <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3">
@@ -1285,6 +1310,7 @@ export function PromotionChannelSelect({
         fileName={spreadsheetState.fileName}
         headers={spreadsheetState.headers}
         sampleRows={spreadsheetState.sampleRows}
+        allRows={spreadsheetState.allRows}
         totalRows={spreadsheetState.totalRows}
         eventId={eventId}
         eventName={eventName}
@@ -1304,6 +1330,7 @@ export function PromotionChannelSelect({
             [activeChannel]: [newTemplate, ...prev[activeChannel].slice(0, 2)],
           }));
           setSelectedTemplate(newTemplate);
+          setForm(getInitialEditorForm(newTemplate, eventId));
           setViewMode("edit");
         }}
       />

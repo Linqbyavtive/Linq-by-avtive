@@ -83,7 +83,7 @@ export default async function DashboardPromotionsPage({
             </div>
           }
         >
-          <PromotionChannelSelect eventId={eventId} eventName={eventName} />
+          <PromotionChannelSelect eventId={eventId} eventName={eventName} hideTopBack={true} />
         </Suspense>
       </div>
     </div>
