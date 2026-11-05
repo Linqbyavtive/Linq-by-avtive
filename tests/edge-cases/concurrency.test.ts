@@ -99,7 +99,7 @@ describe("concurrency — parallel validation does not throw", () => {
     const { registerBodySchema } = await import("@/lib/validators/auth.validator");
     const payloads = Array.from({ length: 50 }, (_, i) => ({
       email: `user${i}@example.com`,
-      password: "password1",
+      password: "SecurePass123!",
       username: `user_${i}`,
       organizationName: `Org ${i}`,
     }));

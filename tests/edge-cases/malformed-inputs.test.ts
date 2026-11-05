@@ -46,7 +46,7 @@ describe("malformed inputs — auth register schema", () => {
   it("rejects SQL injection in organization name without throwing", () => {
     const result = registerBodySchema.safeParse({
       email: "user@example.com",
-      password: "password1",
+      password: "SecurePass123!",
       username: "valid_user",
       organizationName: SQL_INJECTION_PAYLOADS[1],
     });

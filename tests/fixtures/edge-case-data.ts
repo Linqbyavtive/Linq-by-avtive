@@ -70,12 +70,12 @@ export const ATTENDEE_MALFORMED_PAYLOADS = [
 ] as const;
 
 export const REGISTER_EDGE_CASES = {
-  emptyEmail: { email: "", password: "password1", username: "valid_user", organizationName: "Org" },
-  invalidEmail: { email: "not-email", password: "password1", username: "valid_user", organizationName: "Org" },
+  emptyEmail: { email: "", password: "SecurePass123!", username: "valid_user", organizationName: "Org" },
+  invalidEmail: { email: "not-email", password: "SecurePass123!", username: "valid_user", organizationName: "Org" },
   shortPassword: { email: "a@example.com", password: "short", username: "valid_user", organizationName: "Org" },
-  shortUsername: { email: "a@example.com", password: "password1", username: "ab", organizationName: "Org" },
-  invalidUsername: { email: "a@example.com", password: "password1", username: "bad user!", organizationName: "Org" },
-  emptyOrg: { email: "a@example.com", password: "password1", username: "valid_user", organizationName: "" },
-  sqlInEmail: { email: SQL_INJECTION_PAYLOADS[0], password: "password1", username: "valid_user", organizationName: "Org" },
-  xssOrg: { email: "a@example.com", password: "password1", username: "valid_user", organizationName: XSS_PAYLOADS[0] },
+  shortUsername: { email: "a@example.com", password: "SecurePass123!", username: "ab", organizationName: "Org" },
+  invalidUsername: { email: "a@example.com", password: "SecurePass123!", username: "bad user!", organizationName: "Org" },
+  emptyOrg: { email: "a@example.com", password: "SecurePass123!", username: "valid_user", organizationName: "" },
+  sqlInEmail: { email: SQL_INJECTION_PAYLOADS[0], password: "SecurePass123!", username: "valid_user", organizationName: "Org" },
+  xssOrg: { email: "a@example.com", password: "SecurePass123!", username: "valid_user", organizationName: XSS_PAYLOADS[0] },
 } as const;

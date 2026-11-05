@@ -1,17 +1,26 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
-// Mock Supabase Server Client
+// Mock Supabase Server Client for auth callback
 const mockExchangeCodeForSession = vi.fn();
-const mockGetUser = vi.fn();
-const mockUpdateUser = vi.fn();
-
 vi.mock("@/utils/supabase/server", () => ({
   createClient: vi.fn().mockImplementation(async () => ({
     auth: {
       exchangeCodeForSession: mockExchangeCodeForSession,
-      getUser: mockGetUser,
-      updateUser: mockUpdateUser,
+    },
+  })),
+}));
+
+// Mock @supabase/supabase-js for reset-password route handler
+const mockGetUser = vi.fn();
+const mockUpdateUserById = vi.fn();
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn().mockImplementation(() => ({
+    auth: {
+      getUser: (...args: unknown[]) => mockGetUser(...args),
+      admin: {
+        updateUserById: (...args: unknown[]) => mockUpdateUserById(...args),
+      },
     },
   })),
 }));
@@ -30,6 +39,8 @@ import proxy from "@/proxy";
 describe("Supabase Password Recovery Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SUPABASE_URL = "https://mock-test.supabase.co";
+    process.env.SUPABASE_SECRET_KEY = "mock_secret_key_123456789";
   });
 
   describe("1. Auth Callback Route Handler (/auth/callback)", () => {
@@ -96,14 +107,17 @@ describe("Supabase Password Recovery Flow", () => {
         error: null,
       });
 
-      mockUpdateUser.mockResolvedValueOnce({
+      mockUpdateUserById.mockResolvedValueOnce({
         data: { user: { id: "user_12345" } },
         error: null,
       });
 
       const req = new Request("http://localhost:3000/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer recovery_token_123",
+        },
         body: JSON.stringify({
           password: "SecurePassword123!",
         }),
@@ -113,7 +127,7 @@ describe("Supabase Password Recovery Flow", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.data.ok).toBe(true);
-      expect(mockUpdateUser).toHaveBeenCalledWith({ password: "SecurePassword123!" });
+      expect(mockUpdateUserById).toHaveBeenCalledWith("user_12345", { password: "SecurePassword123!" });
       expect(mockUpdateUserPasswordDirectly).toHaveBeenCalledWith("verified@example.com", "SecurePassword123!");
     });
 
@@ -150,7 +164,10 @@ describe("Supabase Password Recovery Flow", () => {
 
       const req = new Request("http://localhost:3000/api/auth/reset-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer recovery_token_123",
+        },
         body: JSON.stringify({
           password: "short",
         }),
@@ -160,7 +177,7 @@ describe("Supabase Password Recovery Flow", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain("Password must be at least 12 characters.");
-      expect(mockUpdateUser).not.toHaveBeenCalled();
+      expect(mockUpdateUserById).not.toHaveBeenCalled();
     });
   });
 
