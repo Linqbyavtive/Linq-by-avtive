@@ -5,8 +5,8 @@ import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 interface CrowdCanvasProps {
-  /** Sprite sheet of people (rows x cols grid). Self-host it in /public for production. */
-  src: string;
+  /** Sprite sheet of people (rows x cols grid). Local /crowd/linq-corporate-peeps.png is preferred. */
+  src?: string;
   rows?: number;
   cols?: number;
   /** Radius in px of the colour spotlight that follows the cursor. */
@@ -30,6 +30,9 @@ type Peep = {
   walk: gsap.core.Timeline | null;
 };
 
+const CDN_FALLBACK_SRC =
+  "https://cdn.21st.dev/assets/localized/abdb8990a7bef8c2f5af3e45f0a3c969c4b0603fba8be92e81347de4ea4e1ed7.png";
+
 const randomRange = (min: number, max: number) => min + Math.random() * (max - min);
 const randomIndex = <T,>(array: T[]) => randomRange(0, array.length) | 0;
 const removeFromArray = <T,>(array: T[], i: number) => array.splice(i, 1)[0];
@@ -37,7 +40,7 @@ const removeItemFromArray = <T,>(array: T[], item: T) =>
   removeFromArray(array, array.indexOf(item));
 
 const CrowdCanvas = ({
-  src,
+  src = "/crowd/linq-corporate-peeps.png",
   rows = 15,
   cols = 7,
   spotlight = 160,
@@ -53,12 +56,15 @@ const CrowdCanvas = ({
     const base = baseRef.current;
     const reveal = revealRef.current;
     if (!wrap || !base || !reveal) return;
-    const baseCtx = base.getContext("2d");
-    const revealCtx = reveal.getContext("2d");
+
+    const baseCtx = base.getContext("2d", { alpha: true });
+    const revealCtx = reveal.getContext("2d", { alpha: true });
     if (!baseCtx || !revealCtx) return;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let disposed = false;
+    let isVisible = true;
+    let isTickerActive = false;
 
     const img = new Image();
     const stage: Stage = { width: 0, height: 0 };
@@ -66,19 +72,22 @@ const CrowdCanvas = ({
     const availablePeeps: Peep[] = [];
     const crowd: Peep[] = [];
 
-    // ---------- walking with distant perspective & 55-65% scale ----------
+    // ---------- walking with distant perspective & responsive scale ----------
     const resetPeep = (peep: Peep) => {
       const direction = Math.random() > 0.5 ? 1 : -1;
+      const isMobile = stage.width < 640;
 
       // Depth perception: 0 = closest in distance audience, 1 = furthest back
       const depthFactor = gsap.parseEase("power2.in")(Math.random());
 
-      // Scale between 55% and 65% for distant perspective
-      const scale = 0.55 + 0.10 * (1 - depthFactor);
+      // Scale: 45%-55% on mobile to remain lightweight and avoid text overlap; 55%-65% on desktop
+      const baseScale = isMobile ? 0.45 : 0.55;
+      const scaleVariance = isMobile ? 0.08 : 0.10;
+      const scale = baseScale + scaleVariance * (1 - depthFactor);
 
       // Distant ground placement: farther figures walk slightly higher on the ground plane
-      const verticalSpread = Math.min(180, stage.height * 0.45);
-      const offsetY = 45 - verticalSpread * depthFactor;
+      const verticalSpread = Math.min(isMobile ? 120 : 180, stage.height * 0.42);
+      const offsetY = (isMobile ? 30 : 45) - verticalSpread * depthFactor;
       const startY = stage.height - peep.height * scale + offsetY;
 
       const visualWidth = peep.width * scale;
@@ -95,7 +104,7 @@ const CrowdCanvas = ({
 
     const normalWalk = (peep: Peep, { startY, endX }: { startY: number; endX: number }) => {
       // Calm, smooth horizontal movement: each person takes ~18-22 seconds to cross
-      const xDuration = randomRange(19, 21.5);
+      const xDuration = randomRange(19, 22);
       const yDuration = 0.42;
       const bob = 3.5 * (peep.scale / 0.6);
       const tl = gsap.timeline();
@@ -110,11 +119,12 @@ const CrowdCanvas = ({
     };
 
     const addPeepToCrowd = () => {
+      if (!availablePeeps.length) return null;
       const peep = removeFromArray(availablePeeps, randomIndex(availablePeeps));
       const walk = normalWalk(peep, resetPeep(peep)).eventCallback("onComplete", () => {
         removeItemFromArray(crowd, peep);
         availablePeeps.push(peep);
-        if (!disposed) addPeepToCrowd();
+        if (!disposed && isVisible) addPeepToCrowd();
       });
       peep.walk = walk;
       crowd.push(peep);
@@ -122,13 +132,25 @@ const CrowdCanvas = ({
       return peep;
     };
 
-    // Keep EXACT full crowd quantity: all sprites active simultaneously
+    // Mobile-optimized crowd capacity: fewer active sprites on small screens to conserve CPU and avoid clutter
     const initCrowd = () => {
-      while (availablePeeps.length) addPeepToCrowd().walk?.progress(Math.random());
-      if (reduceMotion) crowd.forEach((p) => p.walk?.pause());
+      const isMobile = stage.width < 640;
+      const targetCount = isMobile ? Math.min(38, allPeeps.length) : allPeeps.length;
+
+      while (availablePeeps.length && crowd.length < targetCount) {
+        const added = addPeepToCrowd();
+        if (added?.walk) {
+          added.walk.progress(Math.random());
+        }
+      }
+
+      if (reduceMotion) {
+        crowd.forEach((p) => p.walk?.pause());
+      }
     };
 
     const createPeeps = () => {
+      allPeeps.length = 0;
       const { naturalWidth, naturalHeight } = img;
       const rectWidth = naturalWidth / rows;
       const rectHeight = naturalHeight / cols;
@@ -147,10 +169,13 @@ const CrowdCanvas = ({
       }
     };
 
-    // ---------- drawing ----------
+    // ---------- drawing with crisp sharpness and capped DPR ----------
     const draw = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, tintAlpha = 0) => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
       ctx.save();
       ctx.scale(dpr, dpr);
       crowd.forEach((p) => {
@@ -161,8 +186,8 @@ const CrowdCanvas = ({
         ctx.restore();
       });
       ctx.restore();
+
       if (tintAlpha) {
-        // Tint only the pixels that were drawn (people), not the empty canvas.
         ctx.save();
         ctx.globalCompositeOperation = "source-atop";
         ctx.fillStyle = `rgba(124, 58, 237, ${tintAlpha})`;
@@ -187,11 +212,13 @@ const CrowdCanvas = ({
       }
       reveal.style.opacity = "1";
     };
+
     const onLeave = () => {
       reveal.style.opacity = "0";
     };
 
     const render = () => {
+      if (!isVisible || disposed) return;
       current.x += (target.x - current.x) * 0.16;
       current.y += (target.y - current.y) * 0.16;
       reveal.style.setProperty("--mx", `${current.x}px`);
@@ -200,39 +227,98 @@ const CrowdCanvas = ({
       draw(revealCtx, reveal, tint);
     };
 
+    const startTicker = () => {
+      if (!isTickerActive && !reduceMotion) {
+        gsap.ticker.add(render);
+        isTickerActive = true;
+      }
+    };
+
+    const stopTicker = () => {
+      if (isTickerActive) {
+        gsap.ticker.remove(render);
+        isTickerActive = false;
+      }
+    };
+
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      if (disposed) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       stage.width = base.clientWidth;
       stage.height = base.clientHeight;
+
       [base, reveal].forEach((c) => {
         c.width = stage.width * dpr;
         c.height = stage.height * dpr;
       });
+
       crowd.forEach((p) => p.walk?.kill());
       crowd.length = 0;
       availablePeeps.length = 0;
       availablePeeps.push(...allPeeps);
       initCrowd();
+
+      if (reduceMotion) {
+        draw(baseCtx, base);
+      }
     };
 
+    // ---------- Viewport Intersection Observer (pause when out of view) ----------
+    let observer: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          const inView = Boolean(entry && entry.isIntersecting);
+          isVisible = inView;
+          if (inView) {
+            startTicker();
+            if (!reduceMotion) {
+              crowd.forEach((p) => p.walk?.resume());
+            }
+          } else {
+            stopTicker();
+            crowd.forEach((p) => p.walk?.pause());
+          }
+        },
+        { threshold: 0.05 },
+      );
+      observer.observe(wrap);
+    }
+
+    // ---------- Image Loading with Fallback ----------
     img.onload = () => {
       if (disposed) return;
       createPeeps();
       resize();
-      gsap.ticker.add(render);
+      if (!reduceMotion) {
+        startTicker();
+      } else {
+        draw(baseCtx, base);
+      }
     };
+
+    img.onerror = () => {
+      if (disposed) return;
+      // If local image fails, fall back to production CDN sprite
+      if (img.src !== CDN_FALLBACK_SRC) {
+        img.src = CDN_FALLBACK_SRC;
+      }
+    };
+
     img.src = src;
 
-    window.addEventListener("resize", resize);
-    window.addEventListener("pointermove", onMove);
-    document.documentElement.addEventListener("pointerleave", onLeave);
+    window.addEventListener("resize", resize, { passive: true });
+    window.addEventListener("pointermove", onMove, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onLeave, { passive: true });
 
     return () => {
       disposed = true;
+      observer?.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
-      gsap.ticker.remove(render);
+      stopTicker();
       crowd.forEach((p) => p.walk?.kill());
     };
   }, [src, rows, cols, tint]);

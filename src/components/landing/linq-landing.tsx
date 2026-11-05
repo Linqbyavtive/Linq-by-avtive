@@ -47,9 +47,8 @@ import {
 } from "@/components/ui/overview-illustrations";
 import { cn } from "@/lib/utils";
 
-// Production corporate crowd sprite source
-const CROWD_SRC =
-  "https://cdn.21st.dev/assets/localized/abdb8990a7bef8c2f5af3e45f0a3c969c4b0603fba8be92e81347de4ea4e1ed7.png";
+// Production corporate crowd sprite source (served locally with CDN fallback in skiper39)
+const CROWD_SRC = "/crowd/linq-corporate-peeps.png";
 
 const REGISTER_URL = "/organization/register";
 const LOGIN_URL = "/login";
@@ -225,9 +224,9 @@ const features = [
 // ── Clean Platform Capacity Metrics (from Brochure Page 7) ──
 const reachMetrics = [
   {
-    value: "4",
-    label: "Subscription Plans",
-    icon: Building2,
+    value: "1",
+    label: "Shareable Registration Link",
+    icon: Link2,
   },
   {
     value: "2,500",
@@ -861,6 +860,9 @@ export default function LinqLanding() {
                       >
                         Book Now
                       </button>
+                      <p className="mt-2 text-center text-xs text-slate-500">
+                        Launches your email client addressed to <span className="font-medium text-slate-700">info@avtive.app</span> with your details.
+                      </p>
                     </div>
                   </form>
                 </>
@@ -870,16 +872,27 @@ export default function LinqLanding() {
                     <CheckCircle2 className="size-6" />
                   </div>
                   <h4 className="mt-4 text-xl font-bold text-slate-900">
-                    Demo Request Prepared
+                    Demo Email Ready
                   </h4>
                   <p className="mt-2 text-sm text-slate-600 leading-relaxed max-w-xs mx-auto">
-                    Your request details have been opened in your email client to reach the Avtive team directly at info@avtive.app.
+                    Your email client has been launched with your details addressed to <span className="font-medium text-violet-700">info@avtive.app</span>. You can also contact us directly at any time.
                   </p>
-                  <div className="mt-6">
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof navigator !== "undefined" && navigator.clipboard) {
+                          navigator.clipboard.writeText("info@avtive.app");
+                        }
+                      }}
+                      className="inline-flex items-center justify-center rounded-full px-5 py-2 border border-violet-200 text-xs font-semibold text-violet-700 hover:bg-violet-50 transition-colors cursor-pointer"
+                    >
+                      Copy info@avtive.app
+                    </button>
                     <button
                       type="button"
                       onClick={resetDemoModal}
-                      className="inline-flex items-center justify-center rounded-full px-6 py-2.5 border border-slate-200 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                      className="inline-flex items-center justify-center rounded-full px-5 py-2 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                     >
                       Close Window
                     </button>

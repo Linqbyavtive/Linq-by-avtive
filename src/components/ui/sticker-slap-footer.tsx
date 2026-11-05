@@ -63,15 +63,15 @@ function ArrowUpRightIcon({ className = "size-3.5" }: { className?: string }) {
 // ── Custom Linq Sticker SVGs (Dark / Violet Theme) ──
 function ConnectedLinkSticker() {
   return (
-    <div className="relative select-none rounded-2xl border-2 border-white bg-gradient-to-r from-[#7546C8] to-[#5B21B6] px-3.5 py-2 shadow-[0_8px_20px_rgba(0,0,0,0.45)] ring-1 ring-violet-300/30">
-      <div className="flex items-center gap-2">
-        <svg className="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <div className="relative select-none rounded-2xl border-2 border-white bg-gradient-to-r from-[#7546C8] to-[#5B21B6] px-3 py-1.5 sm:px-3.5 sm:py-2 shadow-[0_8px_20px_rgba(0,0,0,0.45)] ring-1 ring-violet-300/30">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <svg className="size-4 sm:size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
         </svg>
         <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-wider text-violet-200">Linq</span>
-          <span className="text-xs font-bold leading-none text-white">One Link</span>
+          <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-violet-200">Linq</span>
+          <span className="text-[11px] sm:text-xs font-bold leading-none text-white">One Link</span>
         </div>
       </div>
     </div>
@@ -80,19 +80,19 @@ function ConnectedLinkSticker() {
 
 function QrAttendeeCardSticker() {
   return (
-    <div className="relative w-[100px] select-none rounded-2xl border-2 border-white bg-[#1A1429] p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.5)] ring-1 ring-violet-400/20">
+    <div className="relative w-[85px] sm:w-[100px] select-none rounded-2xl border-2 border-white bg-[#1A1429] p-2 sm:p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.5)] ring-1 ring-violet-400/20">
       {/* Top lanyard hole */}
-      <div className="mx-auto mb-1.5 h-1 w-5 rounded-full bg-violet-400/40" />
+      <div className="mx-auto mb-1 h-1 w-4 sm:w-5 rounded-full bg-violet-400/40" />
       
       {/* Mini QR display */}
-      <div className="rounded-lg bg-white p-1.5 shadow-xs">
-        <svg className="size-16 text-[#241A3E]" viewBox="0 0 24 24" fill="currentColor">
+      <div className="rounded-lg bg-white p-1 sm:p-1.5 shadow-xs">
+        <svg className="size-13 sm:size-16 text-[#241A3E]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm14 0h4v2h-4v-2zm-4 0h2v4h-2v-4zm2 4h4v2h-4v-2zm2-2h2v2h-2v-2zm-6-2h2v2h-2v-2zm2-4h2v2h-2v-2zm-2 2h2v2h-2v-2zm6 0h2v2h-2v-2zM5 5h2v2H5V5zm12 0h2v2h-2V5zM5 17h2v2H5v-2z" />
         </svg>
       </div>
 
       {/* Badge label */}
-      <div className="mt-1.5 flex items-center justify-between text-[9px] font-bold text-violet-300">
+      <div className="mt-1 flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-violet-300">
         <span>ATTENDEE</span>
         <span className="inline-block size-1.5 rounded-full bg-emerald-400" />
       </div>
@@ -102,7 +102,7 @@ function QrAttendeeCardSticker() {
 
 function NetworkNodesSticker() {
   return (
-    <div className="relative size-[94px] select-none rounded-2xl border-2 border-white bg-gradient-to-br from-[#1E1730] to-[#110D1D] p-2 shadow-[0_8px_22px_rgba(0,0,0,0.5)] ring-1 ring-violet-400/25">
+    <div className="relative size-[78px] sm:size-[94px] select-none rounded-2xl border-2 border-white bg-gradient-to-br from-[#1E1730] to-[#110D1D] p-1.5 sm:p-2 shadow-[0_8px_22px_rgba(0,0,0,0.5)] ring-1 ring-violet-400/25">
       <svg className="size-full text-violet-400" viewBox="0 0 100 100" fill="none">
         {/* Connection lines */}
         <line x1="50" y1="50" x2="25" y2="28" stroke="#8B5CF6" strokeWidth="2.5" strokeDasharray="3 3" opacity="0.8" />
@@ -120,7 +120,7 @@ function NetworkNodesSticker() {
         <circle cx="50" cy="50" r="11" fill="#7546C8" stroke="#FFFFFF" strokeWidth="2" />
         <circle cx="50" cy="50" r="4" fill="#FFFFFF" />
       </svg>
-      <div className="absolute bottom-1 left-0 right-0 text-center text-[8px] font-black uppercase tracking-wider text-violet-300">
+      <div className="absolute bottom-1 left-0 right-0 text-center text-[7px] sm:text-[8px] font-black uppercase tracking-wider text-violet-300">
         Connect
       </div>
     </div>
@@ -129,7 +129,7 @@ function NetworkNodesSticker() {
 
 function VioletSparkleSticker() {
   return (
-    <div className="relative size-[64px] select-none rounded-2xl border-2 border-white bg-gradient-to-tr from-[#6D28D9] to-[#8B5CF6] p-2 shadow-[0_8px_20px_rgba(109,40,217,0.4)] ring-1 ring-violet-300/30">
+    <div className="relative size-[54px] sm:size-[64px] select-none rounded-2xl border-2 border-white bg-gradient-to-tr from-[#6D28D9] to-[#8B5CF6] p-1.5 sm:p-2 shadow-[0_8px_20px_rgba(109,40,217,0.4)] ring-1 ring-violet-300/30">
       <svg className="size-full text-white" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 0l2.5 8.5L23 11l-8.5 2.5L12 22l-2.5-8.5L1 11l8.5-2.5L12 0z" />
         <circle cx="19" cy="4" r="1.5" fill="#DDD6FE" />
@@ -159,13 +159,14 @@ export default function StickerSlapFooter() {
     }));
   };
 
+  // Sticker positioning: safe corner placement with mobile scaling to prevent overlap with wordmark
   const stickers: StickerItem[] = [
     {
       id: "link",
       name: "One Link",
       defaultRotate: -6,
       slapRotate: -24,
-      initialClass: "top-4 right-4 sm:right-12 md:right-24 lg:right-32",
+      initialClass: "top-3 right-3 sm:top-5 sm:right-10 md:right-20 lg:right-32",
       render: <ConnectedLinkSticker />,
     },
     {
@@ -173,7 +174,7 @@ export default function StickerSlapFooter() {
       name: "QR Pass",
       defaultRotate: 7,
       slapRotate: 28,
-      initialClass: "bottom-6 left-4 sm:left-10 md:left-20 lg:left-28",
+      initialClass: "bottom-3 left-3 sm:bottom-6 sm:left-10 md:left-20 lg:left-28",
       render: <QrAttendeeCardSticker />,
     },
     {
@@ -181,7 +182,7 @@ export default function StickerSlapFooter() {
       name: "Network Nodes",
       defaultRotate: -10,
       slapRotate: -32,
-      initialClass: "top-3 left-4 sm:left-12 md:left-28 lg:left-36",
+      initialClass: "top-3 left-3 sm:top-4 sm:left-10 md:left-24 lg:left-36",
       render: <NetworkNodesSticker />,
     },
     {
@@ -189,7 +190,7 @@ export default function StickerSlapFooter() {
       name: "Sparkle",
       defaultRotate: 14,
       slapRotate: 36,
-      initialClass: "bottom-8 right-6 sm:right-16 md:right-28 lg:right-40",
+      initialClass: "bottom-3 right-3 sm:bottom-7 sm:right-12 md:right-24 lg:right-36",
       render: <VioletSparkleSticker />,
     },
   ];
@@ -207,7 +208,7 @@ export default function StickerSlapFooter() {
 
       <div className="relative mx-auto max-w-7xl px-6 pt-16 sm:pt-20 pb-12">
         {/* ── Top Interactive Arena: Wordmark & Slap Stickers ── */}
-        <div className="relative mb-16 sm:mb-20 rounded-3xl border border-[#8B5CF6]/15 bg-[#141021]/80 px-6 py-14 sm:py-20 text-center shadow-[0_16px_40px_rgba(0,0,0,0.4)] backdrop-blur-md overflow-hidden">
+        <div className="relative mb-16 sm:mb-20 rounded-3xl border border-[#8B5CF6]/15 bg-[#141021]/80 px-4 sm:px-6 py-12 sm:py-16 md:py-20 text-center shadow-[0_16px_40px_rgba(0,0,0,0.4)] backdrop-blur-md overflow-hidden">
           {/* Subtle background grid pattern */}
           <div
             className="pointer-events-none absolute inset-0 opacity-[0.03]"
@@ -229,7 +230,7 @@ export default function StickerSlapFooter() {
                 initial={
                   shouldReduceMotion
                     ? { opacity: 0 }
-                    : { opacity: 0, scale: 2.2, rotate: stk.slapRotate }
+                    : { opacity: 0, scale: 2.0, rotate: stk.slapRotate }
                 }
                 whileInView={
                   shouldReduceMotion
@@ -254,31 +255,20 @@ export default function StickerSlapFooter() {
             ))}
           </div>
 
-          {/* Giant LINQ Wordmark */}
-          <div className="relative z-10 flex flex-col items-center justify-center">
+          {/* Giant LINQ Wordmark (Tagline removed as requested) */}
+          <div className="relative z-10 flex flex-col items-center justify-center py-4">
             <motion.h2
               initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
               whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="select-none font-black tracking-[-0.06em] text-[5.5rem] sm:text-[8rem] md:text-[10.5rem] lg:text-[13rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#EDE6FE] to-[#8B5CF6]/70 drop-shadow-[0_10px_30px_rgba(117,70,200,0.3)]"
+              className="select-none font-black tracking-[-0.06em] text-[4.75rem] sm:text-[7.5rem] md:text-[10rem] lg:text-[12.5rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#EDE6FE] to-[#8B5CF6]/70 drop-shadow-[0_10px_30px_rgba(117,70,200,0.3)]"
             >
               linq
             </motion.h2>
 
-            {/* Tagline */}
-            <motion.p
-              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
-              whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="mt-4 sm:mt-6 text-base sm:text-lg md:text-xl font-medium tracking-tight text-violet-200/90"
-            >
-              Every connection creates opportunity.
-            </motion.p>
-
-            {/* Subtle double-click hint */}
-            <p className="mt-3 text-[11px] font-medium text-violet-400/50">
+            {/* Double-click hint */}
+            <p className="mt-4 sm:mt-6 text-[10px] sm:text-[11px] font-medium text-violet-400/50">
               Double-click any sticker to reset its position
             </p>
           </div>
@@ -437,4 +427,3 @@ export default function StickerSlapFooter() {
 }
 
 export { StickerSlapFooter };
-
