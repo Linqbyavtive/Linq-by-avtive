@@ -83,7 +83,7 @@ function QrAttendeeCardSticker() {
     <div className="relative w-[85px] sm:w-[100px] select-none rounded-2xl border-2 border-white bg-[#1A1429] p-2 sm:p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.5)] ring-1 ring-violet-400/20">
       {/* Top lanyard hole */}
       <div className="mx-auto mb-1 h-1 w-4 sm:w-5 rounded-full bg-violet-400/40" />
-      
+
       {/* Mini QR display */}
       <div className="rounded-lg bg-white p-1 sm:p-1.5 shadow-xs">
         <svg className="size-13 sm:size-16 text-[#241A3E]" viewBox="0 0 24 24" fill="currentColor">
@@ -109,13 +109,13 @@ function NetworkNodesSticker() {
         <line x1="50" y1="50" x2="78" y2="30" stroke="#8B5CF6" strokeWidth="2.5" strokeDasharray="3 3" opacity="0.8" />
         <line x1="50" y1="50" x2="72" y2="76" stroke="#8B5CF6" strokeWidth="2.5" opacity="0.8" />
         <line x1="50" y1="50" x2="28" y2="74" stroke="#8B5CF6" strokeWidth="2.5" opacity="0.8" />
-        
+
         {/* Satellites */}
         <circle cx="25" cy="28" r="6" fill="#C4B5FD" />
         <circle cx="78" cy="30" r="5" fill="#A78BFA" />
         <circle cx="72" cy="76" r="6" fill="#8B5CF6" />
         <circle cx="28" cy="74" r="5" fill="#C4B5FD" />
-        
+
         {/* Center Node */}
         <circle cx="50" cy="50" r="11" fill="#7546C8" stroke="#FFFFFF" strokeWidth="2" />
         <circle cx="50" cy="50" r="4" fill="#FFFFFF" />
@@ -197,8 +197,10 @@ export default function StickerSlapFooter() {
 
   return (
     <footer
+      id="linq-footer"
       ref={containerRef}
-      className="relative w-full border-t border-[#7546C8]/25 bg-[#0C0A14] text-white selection:bg-violet-900 selection:text-white"
+      className="linq-footer relative w-full border-t border-[#7546C8]/25 bg-[#0C0A14] text-[#F8FAFC] selection:bg-violet-900 selection:text-white"
+      style={{ backgroundColor: "#0C0A14", color: "#F8FAFC" }}
     >
       {/* Background ambient violet glow */}
       <div
@@ -255,20 +257,42 @@ export default function StickerSlapFooter() {
             ))}
           </div>
 
-          {/* Giant LINQ Wordmark (Tagline removed as requested) */}
+          {/* Giant LINQ Wordmark & Tagline */}
           <div className="relative z-10 flex flex-col items-center justify-center py-4">
             <motion.h2
               initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
               whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="select-none font-black tracking-[-0.06em] text-[4.75rem] sm:text-[7.5rem] md:text-[10rem] lg:text-[12.5rem] leading-[0.8] text-transparent bg-clip-text bg-gradient-to-b from-white via-[#EDE6FE] to-[#8B5CF6]/70 drop-shadow-[0_10px_30px_rgba(117,70,200,0.3)]"
+              className="linq-footer-wordmark select-none font-black tracking-[-0.06em] text-[4.75rem] sm:text-[7.5rem] md:text-[10rem] lg:text-[12.5rem] leading-[0.8] drop-shadow-[0_10px_30px_rgba(117,70,200,0.3)]"
+              style={{
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                WebkitBackgroundClip: "text",
+                backgroundImage: "linear-gradient(180deg, #FFFFFF 0%, #EDE6FE 50%, rgba(139, 92, 246, 0.75) 100%)",
+              }}
             >
               linq
             </motion.h2>
 
+            {/* Tagline */}
+            <motion.p
+              initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              whileInView={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="linq-footer-tagline mt-3 sm:mt-5 text-base sm:text-lg md:text-xl font-medium tracking-tight"
+              style={{ color: "#DDD6FE", WebkitTextFillColor: "#DDD6FE" }}
+            >
+              Every connection creates opportunity.
+            </motion.p>
+
             {/* Double-click hint */}
-            <p className="mt-4 sm:mt-6 text-[10px] sm:text-[11px] font-medium text-violet-400/50">
+            <p
+              className="linq-footer-hint mt-3 sm:mt-4 text-[11px] sm:text-xs font-medium"
+              style={{ color: "#A78BFA", WebkitTextFillColor: "#A78BFA" }}
+            >
               Double-click any sticker to reset its position
             </p>
           </div>
@@ -278,14 +302,18 @@ export default function StickerSlapFooter() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-12 pb-12 border-b border-white/10">
           {/* Column 1 — EXPLORE */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#A78BFA]">
+            <h3
+              className="linq-footer-heading text-xs font-bold uppercase tracking-widest"
+              style={{ color: "#C4B5FD", WebkitTextFillColor: "#C4B5FD" }}
+            >
               EXPLORE
             </h3>
             <ul className="mt-4 space-y-3">
               <li>
                 <a
                   href="#overview"
-                  className="text-sm text-slate-300 hover:text-white transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  className="linq-footer-link text-sm transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   Overview
                 </a>
@@ -293,7 +321,8 @@ export default function StickerSlapFooter() {
               <li>
                 <a
                   href="#how-it-works"
-                  className="text-sm text-slate-300 hover:text-white transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  className="linq-footer-link text-sm transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   How it works
                 </a>
@@ -301,7 +330,8 @@ export default function StickerSlapFooter() {
               <li>
                 <a
                   href="#features"
-                  className="text-sm text-slate-300 hover:text-white transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  className="linq-footer-link text-sm transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   Features
                 </a>
@@ -311,26 +341,31 @@ export default function StickerSlapFooter() {
 
           {/* Column 2 — ACCOUNT */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#A78BFA]">
+            <h3
+              className="linq-footer-heading text-xs font-bold uppercase tracking-widest"
+              style={{ color: "#C4B5FD", WebkitTextFillColor: "#C4B5FD" }}
+            >
               ACCOUNT
             </h3>
             <ul className="mt-4 space-y-3">
               <li>
                 <Link
                   href="/organization/register"
-                  className="group inline-flex items-center gap-1 text-sm text-slate-300 hover:text-white transition-colors duration-150 hover:translate-x-0.5"
+                  className="linq-footer-link group inline-flex items-center gap-1 text-sm transition-colors duration-150 hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   <span>Register organization</span>
-                  <ArrowUpRightIcon className="size-3.5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                  <ArrowUpRightIcon className="size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
                 </Link>
               </li>
               <li>
                 <Link
                   href="/login"
-                  className="group inline-flex items-center gap-1 text-sm text-slate-300 hover:text-white transition-colors duration-150 hover:translate-x-0.5"
+                  className="linq-footer-link group inline-flex items-center gap-1 text-sm transition-colors duration-150 hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   <span>Log in</span>
-                  <ArrowUpRightIcon className="size-3.5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                  <ArrowUpRightIcon className="size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
                 </Link>
               </li>
               <li>
@@ -338,10 +373,11 @@ export default function StickerSlapFooter() {
                   href="https://www.avtive.app"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-1 text-sm text-slate-300 hover:text-white transition-colors duration-150 hover:translate-x-0.5"
+                  className="linq-footer-link group inline-flex items-center gap-1 text-sm transition-colors duration-150 hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   <span>Avtive</span>
-                  <ArrowUpRightIcon className="size-3.5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                  <ArrowUpRightIcon className="size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
                 </a>
               </li>
             </ul>
@@ -349,14 +385,18 @@ export default function StickerSlapFooter() {
 
           {/* Column 3 — CONTACT & SOCIAL */}
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#A78BFA]">
+            <h3
+              className="linq-footer-heading text-xs font-bold uppercase tracking-widest"
+              style={{ color: "#C4B5FD", WebkitTextFillColor: "#C4B5FD" }}
+            >
               CONTACT
             </h3>
             <ul className="mt-4 space-y-3">
               <li>
                 <a
                   href="mailto:info@avtive.app"
-                  className="text-sm text-slate-300 hover:text-white transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  className="linq-footer-link text-sm transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   info@avtive.app
                 </a>
@@ -364,7 +404,8 @@ export default function StickerSlapFooter() {
               <li>
                 <a
                   href="tel:+923125175041"
-                  className="text-sm text-slate-300 hover:text-white transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  className="linq-footer-link text-sm transition-colors duration-150 inline-block hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   +92 312 5175041
                 </a>
@@ -372,10 +413,11 @@ export default function StickerSlapFooter() {
               <li>
                 <Link
                   href="/"
-                  className="group inline-flex items-center gap-1 text-sm text-slate-300 hover:text-white transition-colors duration-150 hover:translate-x-0.5"
+                  className="linq-footer-link group inline-flex items-center gap-1 text-sm transition-colors duration-150 hover:translate-x-0.5"
+                  style={{ color: "#E2E8F0" }}
                 >
                   <span>linq.avtive.app</span>
-                  <ArrowUpRightIcon className="size-3.5 opacity-60 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
+                  <ArrowUpRightIcon className="size-3.5 opacity-70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
                 </Link>
               </li>
             </ul>
@@ -386,7 +428,8 @@ export default function StickerSlapFooter() {
                 href="https://www.linkedin.com/company/linqavtive/posts/?viewAsMember=true"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-[#8B5CF6]/50 hover:bg-[#7546C8]/30 hover:text-white hover:scale-105"
+                className="linq-footer-social-btn grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 transition-all duration-200 hover:border-[#8B5CF6]/50 hover:bg-[#7546C8]/30 hover:scale-105"
+                style={{ color: "#E2E8F0" }}
                 aria-label="Linq on LinkedIn"
               >
                 <LinkedInIcon className="size-4" />
@@ -395,7 +438,8 @@ export default function StickerSlapFooter() {
                 href="https://www.instagram.com/linq.me/?utm_source=ig_web_button_share_sheet"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="grid size-9 place-items-center rounded-full border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-[#8B5CF6]/50 hover:bg-[#7546C8]/30 hover:text-white hover:scale-105"
+                className="linq-footer-social-btn grid size-9 place-items-center rounded-full border border-white/15 bg-white/5 transition-all duration-200 hover:border-[#8B5CF6]/50 hover:bg-[#7546C8]/30 hover:scale-105"
+                style={{ color: "#E2E8F0" }}
                 aria-label="Linq on Instagram"
               >
                 <InstagramIcon className="size-4" />
@@ -405,7 +449,10 @@ export default function StickerSlapFooter() {
         </div>
 
         {/* ── Bottom Bar: Copyright & Open Peeps Attribution ── */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <div
+          className="linq-footer-meta mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs"
+          style={{ color: "#94A3B8" }}
+        >
           <div>
             © {new Date().getFullYear()} Avtive. All rights reserved.
           </div>
@@ -415,7 +462,8 @@ export default function StickerSlapFooter() {
               href="https://www.openpeeps.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-violet-300 underline-offset-2 hover:text-white hover:underline transition-colors"
+              className="underline-offset-2 hover:underline transition-colors"
+              style={{ color: "#C4B5FD" }}
             >
               Open Peeps
             </a>

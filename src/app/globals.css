@@ -284,7 +284,7 @@ small,
     align-items: center;
   }
 
-  .form-actions > * {
+  .form-actions>* {
     flex: 1 1 0;
     min-width: 0;
     align-self: stretch;
@@ -316,6 +316,7 @@ small,
     transform: scale(0.98);
     filter: blur(4px);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -333,6 +334,7 @@ small,
     opacity: 0;
     transform: translateY(12px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -396,19 +398,38 @@ small,
     color var(--motion-duration-standard) var(--motion-ease-standard);
 }
 
-.delay-100 { animation-delay: 60ms; }
-.delay-200 { animation-delay: 120ms; }
-.delay-300 { animation-delay: 180ms; }
-.delay-400 { animation-delay: 240ms; }
-.delay-500 { animation-delay: 300ms; }
+.delay-100 {
+  animation-delay: 60ms;
+}
+
+.delay-200 {
+  animation-delay: 120ms;
+}
+
+.delay-300 {
+  animation-delay: 180ms;
+}
+
+.delay-400 {
+  animation-delay: 240ms;
+}
+
+.delay-500 {
+  animation-delay: 300ms;
+}
 
 @keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 100%);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 100%);
   background-size: 1000px 100%;
   animation: shimmer 2s infinite linear;
 }
@@ -480,6 +501,7 @@ a:hover {
 @utility scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -488,16 +510,20 @@ a:hover {
 @utility custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
+
   &::-webkit-scrollbar {
     width: 5px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+
   &::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 10px;
   }
+
   &::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
   }
@@ -528,6 +554,7 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -621,12 +648,95 @@ a:hover {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
 }
 
-
+
+
+/* ─── Scoped Linq Landing Page Footer Styles (#linq-footer) ────────────────
+   Ensures unlayered global heading & typography rules cannot override
+   the dark footer's text contrast, link visibility, or gradient text-fill.
+   ───────────────────────────────────────────────────────────────────────── */
+#linq-footer,
+.linq-footer {
+  background-color: #0c0a14 !important;
+  color: #f8fafc !important;
+}
+
+#linq-footer h2,
+#linq-footer .linq-footer-wordmark {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  background-image: linear-gradient(180deg, #ffffff 0%, #ede6fe 50%, rgba(139, 92, 246, 0.75) 100%) !important;
+}
+
+#linq-footer h3,
+#linq-footer .linq-footer-heading {
+  color: #c4b5fd !important;
+  -webkit-text-fill-color: #c4b5fd !important;
+  letter-spacing: 0.12em !important;
+  font-weight: 700 !important;
+}
+
+#linq-footer p,
+#linq-footer .linq-footer-text {
+  color: #cbd5e1;
+}
+
+#linq-footer .linq-footer-tagline {
+  color: #ddd6fe !important;
+  -webkit-text-fill-color: #ddd6fe !important;
+}
+
+#linq-footer .linq-footer-hint {
+  color: #a78bfa !important;
+  -webkit-text-fill-color: #a78bfa !important;
+}
+
+#linq-footer a:not(.linq-footer-social-btn),
+#linq-footer .linq-footer-link {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+  text-decoration: none;
+}
+
+#linq-footer a:not(.linq-footer-social-btn):hover,
+#linq-footer .linq-footer-link:hover {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-decoration: none;
+}
+
+#linq-footer .linq-footer-social-btn {
+  color: #e2e8f0 !important;
+  -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+#linq-footer .linq-footer-social-btn:hover {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+#linq-footer .linq-footer-meta {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}
+
+#linq-footer .linq-footer-meta a {
+  color: #c4b5fd !important;
+  -webkit-text-fill-color: #c4b5fd !important;
+}
+
+#linq-footer .linq-footer-meta a:hover {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
