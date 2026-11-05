@@ -48,7 +48,8 @@ import {
 import { cn } from "@/lib/utils";
 
 // Production corporate crowd sprite source
-const CROWD_SRC = "/crowd/linq-corporate-peeps.png";
+const CROWD_SRC =
+  "https://cdn.21st.dev/assets/localized/abdb8990a7bef8c2f5af3e45f0a3c969c4b0603fba8be92e81347de4ea4e1ed7.png";
 
 const REGISTER_URL = "/organization/register";
 const LOGIN_URL = "/login";
