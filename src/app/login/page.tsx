@@ -72,7 +72,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
       });
     } catch {
-      setError("Could not check your previous password. Please try again.");
+      setError("Could not check your credentials. Please try again.");
       return true;
     }
     const migrationPayload = await migrationRes.json().catch(() => ({}));
@@ -84,18 +84,8 @@ export default function LoginPage() {
       return false;
     }
 
-    const signupResult = await authClient.signUp.email({
-      email: trimmedEmail,
-      password: trimmedPassword,
-      name: String(migrationPayload.data.name || trimmedEmail),
-    });
-    if (signupResult.error && !signupResult.error.message?.toLowerCase().includes("already")) {
-      setError(
-        signupResult.error.message ||
-          "Your old password was verified, but the account could not be created. Please reset your password.",
-      );
-      return true;
-    }
+    // The user has been verified and synced into Supabase Auth by the server.
+    // Directly sign in to establish the authenticated session.
     const signInResult = await authClient.signIn.email({
       email: trimmedEmail,
       password: trimmedPassword,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { registerUser } from "@/lib/auth-db";
 import { validatePasswordPolicy } from "@/lib/security/password-policy";
+import { syncSupabaseAuthUser } from "@/utils/supabase/admin";
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
     const username = String(body.username || "").trim().toLowerCase();
-    const neonAuthUserId = String(body.neonAuthUserId || "").trim();
+    let neonAuthUserId = String(body.neonAuthUserId || "").trim();
 
     if (!email || !password || !username) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
@@ -28,6 +29,19 @@ export async function POST(req: Request) {
     const passwordIssues = validatePasswordPolicy(password);
     if (passwordIssues.length > 0) {
       return NextResponse.json({ error: passwordIssues[0] }, { status: 400 });
+    }
+
+    // Sync account into Supabase Auth with email_confirm: true
+    // This bypasses client-side SMTP confirmation dependencies
+    const syncRes = await syncSupabaseAuthUser({
+      email,
+      password,
+      name: username,
+      emailConfirm: true,
+    });
+
+    if (syncRes.userId) {
+      neonAuthUserId = syncRes.userId;
     }
 
     // Pass empty organizationName so it doesn't create a new org

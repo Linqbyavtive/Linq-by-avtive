@@ -84,17 +84,7 @@ function InviteOrgMemberInner() {
                 setBusy(true);
                 setMessage("");
                 try {
-                  const signUpRes = await authClient.signUp.email({
-                    email: email.trim().toLowerCase(),
-                    password,
-                    name: username.trim().toLowerCase(),
-                  });
-                  if (signUpRes.error) {
-                    setMessage(signUpRes.error.message || "Could not create account.");
-                    setBusy(false);
-                    return;
-                  }
-
+                  // 1. Register user and sync with Supabase Auth on the server
                   const res = await fetch("/api/auth/register-invited", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -102,7 +92,6 @@ function InviteOrgMemberInner() {
                       email,
                       username,
                       password,
-                      neonAuthUserId: String(signUpRes.data?.user?.id || ""),
                     }),
                   });
                   const payload = await res.json().catch(() => ({}));
@@ -111,11 +100,22 @@ function InviteOrgMemberInner() {
                     setBusy(false);
                     return;
                   }
-                  
+
+                  // 2. Sign in via Supabase client to establish session cookies in browser
+                  const signInRes = await authClient.signIn.email({
+                    email: email.trim().toLowerCase(),
+                    password,
+                  });
+                  if (signInRes.error) {
+                    setMessage(signInRes.error.message || "Account created, but could not sign in. Please try logging in.");
+                    setBusy(false);
+                    return;
+                  }
+
                   // Wait a brief moment to ensure cookies are set
                   await new Promise(r => setTimeout(r, 500));
                   
-                  // After sign in, accept the invite
+                  // 3. After sign in, accept the invite
                   const acceptRes = await fetch("/api/organization-members/accept-invite", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
