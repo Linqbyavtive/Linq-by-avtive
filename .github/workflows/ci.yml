@@ -14,6 +14,7 @@ jobs:
       RUN_DB_INTEGRATION_TESTS: "false"
       NEON_AUTH_BASE_URL: https://ci-build-placeholder.neon-auth.invalid
       NEON_AUTH_COOKIE_SECRET: ci-build-placeholder-neon-auth-cookie-secret-minimum-32-chars
+      NEXT_PUBLIC_APP_URL: https://linq.avtive.app
 
     steps:
       - uses: actions/checkout@v4

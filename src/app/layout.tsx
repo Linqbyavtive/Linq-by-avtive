@@ -6,7 +6,12 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { validateRequiredEnv } from "@/lib/env";
 import "./globals.css";
 
-if (process.env.NEXT_RUNTIME !== "edge") {
+const isNextBuild =
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  process.env.npm_lifecycle_event === "build" ||
+  Boolean(process.env.CI);
+
+if (process.env.NEXT_RUNTIME !== "edge" && !isNextBuild) {
   validateRequiredEnv([
     "NEXT_PUBLIC_APP_URL",
     "DATABASE_URL",
