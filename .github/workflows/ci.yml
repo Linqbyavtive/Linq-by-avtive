@@ -18,6 +18,10 @@ jobs:
       CLOUDINARY_CLOUD_NAME: ci-placeholder
       CLOUDINARY_API_KEY: ci-placeholder
       CLOUDINARY_API_SECRET: ci-placeholder
+      NEXT_PUBLIC_SUPABASE_URL: https://placeholder-project.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+      SUPABASE_URL: https://placeholder-project.supabase.co
+      SUPABASE_SECRET_KEY: placeholder-secret-key
 
     steps:
       - uses: actions/checkout@v4
