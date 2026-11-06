@@ -15,6 +15,9 @@ jobs:
       NEON_AUTH_BASE_URL: https://ci-build-placeholder.neon-auth.invalid
       NEON_AUTH_COOKIE_SECRET: ci-build-placeholder-neon-auth-cookie-secret-minimum-32-chars
       NEXT_PUBLIC_APP_URL: https://linq.avtive.app
+      CLOUDINARY_CLOUD_NAME: ci-placeholder
+      CLOUDINARY_API_KEY: ci-placeholder
+      CLOUDINARY_API_SECRET: ci-placeholder
 
     steps:
       - uses: actions/checkout@v4

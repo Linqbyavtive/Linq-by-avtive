@@ -1,11 +1,18 @@
 import crypto from "node:crypto";
 import { validateRequiredEnv } from "@/lib/env";
 
-validateRequiredEnv([
+const isNextBuild =
+  process.env.NEXT_PHASE === "phase-production-build" ||
+  process.env.npm_lifecycle_event === "build" ||
+  Boolean(process.env.CI);
+
+if (!isNextBuild) {
+  validateRequiredEnv([
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET",
-]);
+  ]);
+}
 
 const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY || "";
