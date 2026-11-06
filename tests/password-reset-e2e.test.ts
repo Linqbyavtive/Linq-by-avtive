@@ -13,7 +13,11 @@ import {
   completePasswordReset,
 } from "@/lib/auth/password-reset";
 
-describe("Password Reset End-to-End Flow", () => {
+const hasDatabase =
+  process.env.RUN_DB_INTEGRATION_TESTS === "true" &&
+  Boolean(process.env.DATABASE_URL?.trim());
+
+describe.skipIf(!hasDatabase)("Password Reset End-to-End Flow", () => {
   it("executes the entire flow: registration, request code, verify code, password reset, and login with new password", async () => {
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const testEmail = `pwd_reset_test_${randomSuffix}@example.com`;

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { registerUser, verifyPassword } from "@/lib/auth-db";
 
-describe("registerUser self-registration flow", () => {
+const hasDatabase =
+  process.env.RUN_DB_INTEGRATION_TESTS === "true" &&
+  Boolean(process.env.DATABASE_URL?.trim());
+
+describe.skipIf(!hasDatabase)("registerUser self-registration flow", () => {
   it("successfully registers a new user with their organization", async () => {
     const randomSuffix = Math.random().toString(36).substring(2, 8);
     const testEmail = `test_signup_${randomSuffix}@example.com`;

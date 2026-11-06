@@ -1,7 +1,18 @@
-import { describe, expect, it } from "vitest";
+import crypto from "node:crypto";
+import { describe, expect, it, beforeAll } from "vitest";
 import { issueAttendeeCardToken, tokenGrantsCardViewAccess, verifyAttendeeCardToken } from "@/lib/security/tokens";
 
 describe("Card Access and Authorization", () => {
+  beforeAll(() => {
+    if (!process.env.ATTENDEE_TOKEN_KEYS_JSON) {
+      const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
+      const privateKeyPem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+      const publicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+      process.env.ATTENDEE_TOKEN_KEYS_JSON = JSON.stringify([
+        { kid: "atk_v1", privateKeyPem, publicKeyPem },
+      ]);
+    }
+  });
   const cardId1 = "11111111-1111-4111-8111-111111111111";
   const cardId2 = "22222222-2222-4222-8222-222222222222";
 
