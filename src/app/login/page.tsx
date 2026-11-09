@@ -72,13 +72,13 @@ export default function LoginPage() {
         body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
       });
     } catch {
-      setError("Could not check your credentials. Please try again.");
+      setError("Authentication service is temporarily unavailable. Please try again shortly.");
       return true;
     }
     const migrationPayload = await migrationRes.json().catch(() => ({}));
     if (!migrationRes.ok || migrationPayload?.data?.canMigrate !== true) {
       if (migrationRes.status !== 401) {
-        setError(String(migrationPayload?.error || "Could not migrate your previous login. Please try again."));
+        setError(String(migrationPayload?.error || "Authentication service is temporarily unavailable. Please try again shortly."));
         return true;
       }
       return false;
@@ -138,6 +138,11 @@ export default function LoginPage() {
         }
         const result = await signInWithSupabase(trimmedEmail, trimmedPassword);
         if (result?.error) {
+          const errMsg = result.error.message?.toLowerCase() || "";
+          if (errMsg.includes("email not confirmed")) {
+            setError("Your email address is not verified yet. Please check your inbox.");
+            return;
+          }
           const migrated = await tryLegacyMigrationLogin(trimmedEmail, trimmedPassword);
           if (!migrated) setError("Incorrect email, password, or verification code.");
           return;
@@ -152,6 +157,11 @@ export default function LoginPage() {
 
       const result = await signInWithSupabase(trimmedEmail, trimmedPassword);
       if (result?.error) {
+        const errMsg = result.error.message?.toLowerCase() || "";
+        if (errMsg.includes("email not confirmed")) {
+          setError("Your email address is not verified yet. Please check your inbox.");
+          return;
+        }
         const migrated = await tryLegacyMigrationLogin(trimmedEmail, trimmedPassword);
         if (!migrated) setError(result.error.message || "Incorrect email or password.");
         return;
@@ -186,7 +196,6 @@ export default function LoginPage() {
                   height={36}
                   style={{ width: "auto" }}
                   className="w-[105px] sm:w-[115px] xl:w-[120px] object-contain cursor-pointer"
-                  priority
                 />
               </Link>
             </div>

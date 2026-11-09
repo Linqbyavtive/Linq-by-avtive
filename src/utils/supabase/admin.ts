@@ -7,6 +7,7 @@ export function getSupabaseAdminClient(): SupabaseClient | null {
   const supabaseSecretKey =
     process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
     "";
 
   if (!supabaseUrl || !supabaseSecretKey) {

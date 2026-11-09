@@ -20,14 +20,16 @@ if (process.env.NEXT_RUNTIME !== "edge" && !isNextBuild) {
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-sans",
+  display: "swap",
 });
 
 const dmMono = DM_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-mono",
+  preload: false,
+  display: "swap",
 });
 
 export const metadata: Metadata = {

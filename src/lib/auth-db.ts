@@ -150,6 +150,14 @@ async function ensureBootstrapSuperAdmin() {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown bootstrap error";
     logger.error({ err: error instanceof Error ? error : undefined, message }, "SUPERADMIN bootstrap failed");
+    superAdminEnsured = true;
+  }
+}
+
+export class AuthInfrastructureError extends Error {
+  constructor(message: string, public readonly originalError?: unknown) {
+    super(message);
+    this.name = "AuthInfrastructureError";
   }
 }
 
@@ -175,11 +183,31 @@ export async function getAuthUserByEmail(email: string): Promise<AuthUserRecord 
 }
 
 export async function verifyPassword(email: string, password: string): Promise<AuthUserRecord | null> {
-  const user = await getAuthUserByEmail(email);
+  let user: AuthUserRecord | null;
+  try {
+    user = await getAuthUserByEmail(email);
+  } catch (dbErr) {
+    throw new AuthInfrastructureError(
+      `Database query failed during user lookup: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}`,
+      dbErr,
+    );
+  }
+
   if (!user || !user.password_hash) return null;
 
-  const argon2 = await getArgon2();
-  const pepper = process.env.PASSWORD_PEPPER || "";
+  let argon2: typeof import("argon2");
+  try {
+    argon2 = await getArgon2();
+  } catch (modErr) {
+    argon2ModulePromise = null;
+    throw new AuthInfrastructureError(
+      `Argon2 cryptographic runtime unavailable: ${modErr instanceof Error ? modErr.message : String(modErr)}`,
+      modErr,
+    );
+  }
+
+  const rawPepper = process.env.PASSWORD_PEPPER || "";
+  const cleanPepper = rawPepper.replace(/^["']|["']$/g, "").trim();
 
   // 1. Direct unpeppered verification
   try {
@@ -189,11 +217,21 @@ export async function verifyPassword(email: string, password: string): Promise<A
     // Hash format mismatch or non-argon2
   }
 
-  // 2. Peppered verification
-  if (pepper) {
+  // 2. Peppered verification (raw pepper)
+  if (rawPepper) {
     try {
-      const okPeppered = await argon2.verify(user.password_hash, `${password}${pepper}`);
+      const okPeppered = await argon2.verify(user.password_hash, `${password}${rawPepper}`);
       if (okPeppered) return user;
+    } catch {
+      // Hash format mismatch
+    }
+  }
+
+  // 3. Clean pepper verification (trimmed/unquoted)
+  if (cleanPepper && cleanPepper !== rawPepper) {
+    try {
+      const okClean = await argon2.verify(user.password_hash, `${password}${cleanPepper}`);
+      if (okClean) return user;
     } catch {
       // Hash format mismatch
     }
@@ -290,14 +328,18 @@ export async function linkAuthUserToNeonAuthUser(neonAuthUserId: string, email: 
   if (already) return already;
 
   const byEmail = await queryNeonOneAsSystem<{ user_id: string }>(
-    `SELECT user_id FROM public.auth_users WHERE email_normalized = $1 LIMIT 1`,
+    `SELECT user_id FROM public.auth_users WHERE email_normalized = $1 OR LOWER(email) = $1 LIMIT 1`,
     [normalizedEmail],
   );
   if (!byEmail?.user_id) return null;
 
   await queryNeonAsSystem(
-    `UPDATE public.auth_users SET neon_auth_user_id = $1, updated_at = now() WHERE user_id = $2`,
-    [neonAuthUserId, byEmail.user_id],
+    `UPDATE public.auth_users
+     SET neon_auth_user_id = $1,
+         email_normalized = COALESCE(email_normalized, $2),
+         updated_at = now()
+     WHERE user_id = $3`,
+    [neonAuthUserId, normalizedEmail, byEmail.user_id],
   );
   return byEmail.user_id;
 }

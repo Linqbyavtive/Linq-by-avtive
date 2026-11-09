@@ -23,7 +23,22 @@ export async function POST(req: Request) {
   const parsed = await parseJsonBody(req, legacyLoginMigrationBodySchema);
   if (!parsed.ok) return parsed.response;
 
-  const user = await verifyPassword(parsed.data.email, parsed.data.password);
+  const { email, password } = parsed.data;
+
+  let user;
+  try {
+    user = await verifyPassword(email, password);
+  } catch (err: unknown) {
+    logger.error(
+      { email, err: err instanceof Error ? err.message : String(err) },
+      "Infrastructure failure during legacy password verification",
+    );
+    return NextResponse.json(
+      { error: "Authentication service is temporarily unavailable. Please try again shortly." },
+      { status: 503 },
+    );
+  }
+
   if (!user) {
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
@@ -31,16 +46,28 @@ export async function POST(req: Request) {
   // User credentials verified in auth_users.
   // Synchronize the account into Supabase Auth directly via the server Admin API.
   // This bypasses client-side SMTP confirmation limitations and sets email_confirm: true immediately.
-  const syncResult = await syncSupabaseAuthUser({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    name: user.username || user.email,
-    emailConfirm: true,
-  });
+  let syncResult;
+  try {
+    syncResult = await syncSupabaseAuthUser({
+      email,
+      password,
+      name: user.username || user.email,
+      emailConfirm: true,
+    });
+  } catch (err: unknown) {
+    logger.error(
+      { email, err: err instanceof Error ? err.message : String(err) },
+      "Exception during Supabase Auth synchronization",
+    );
+    return NextResponse.json(
+      { error: "Authentication service is temporarily unavailable. Please try again shortly." },
+      { status: 503 },
+    );
+  }
 
   if (!syncResult.success) {
     logger.error(
-      { email: parsed.data.email, error: syncResult.error },
+      { email, error: syncResult.error },
       "Failed to sync user to Supabase Auth during legacy migration",
     );
     return NextResponse.json(
@@ -51,9 +78,12 @@ export async function POST(req: Request) {
 
   if (syncResult.userId) {
     try {
-      await linkAuthUserToNeonAuthUser(syncResult.userId, parsed.data.email);
+      await linkAuthUserToNeonAuthUser(syncResult.userId, email);
     } catch (linkError) {
-      logger.warn({ err: linkError }, "Could not link Supabase Auth user ID to auth_users");
+      logger.warn(
+        { email, err: linkError instanceof Error ? linkError.message : String(linkError) },
+        "Could not link Supabase Auth user ID to auth_users",
+      );
     }
   }
 

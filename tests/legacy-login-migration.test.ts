@@ -130,4 +130,41 @@ describe("POST /api/auth/migrate-legacy-login", () => {
     const body = await res.json();
     expect(body.error).toContain("Could not synchronize authentication credentials");
   });
+
+  it("returns 503 when password verification encounters an infrastructure or database failure", async () => {
+    mockVerifyPassword.mockRejectedValueOnce(new Error("Database connection terminated unexpectedly"));
+
+    const req = new Request("http://localhost:3000/api/auth/migrate-legacy-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "Password123!" }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toContain("Authentication service is temporarily unavailable");
+    expect(mockSyncSupabaseAuthUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when Supabase synchronization throws an unexpected exception", async () => {
+    mockVerifyPassword.mockResolvedValueOnce({
+      user_id: "user-123",
+      email: "user@example.com",
+      username: "alice",
+    });
+
+    mockSyncSupabaseAuthUser.mockRejectedValueOnce(new Error("Supabase network timeout"));
+
+    const req = new Request("http://localhost:3000/api/auth/migrate-legacy-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "ValidPassword123!" }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.error).toContain("Authentication service is temporarily unavailable");
+  });
 });
