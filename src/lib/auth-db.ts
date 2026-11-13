@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { logger } from "@/lib/logger-server";
 import { queryNeonAsSystem, queryNeonOneAsSystem } from "@/lib/neon-db";
 import { normalizeOrganizationName, toOrganizationKey } from "@/lib/organization/normalize";
+import { getConfiguredAdminEmails, getSuperAdminEmail } from "@/lib/auth/admin-emails";
+import { syncSupabaseAuthUser } from "@/utils/supabase/admin";
 
 export type AuthUserRecord = {
   user_id: string;
@@ -13,8 +15,14 @@ export type AuthUserRecord = {
   organization_name: string | null;
 };
 
+let bootstrapPromise: Promise<void> | null = null;
 let superAdminEnsured = false;
 let argon2ModulePromise: Promise<typeof import("argon2")> | null = null;
+
+export function resetBootstrapSuperAdminStateForTesting(): void {
+  superAdminEnsured = false;
+  bootstrapPromise = null;
+}
 
 /** Lowercase trimmed email for indexed auth_users lookups. */
 export function normalizeAuthEmail(email: string): string {
@@ -44,118 +52,170 @@ function normalizeBootstrapUsername(email: string) {
   return base.slice(0, 30) || "superadmin";
 }
 
-async function ensureBootstrapSuperAdmin() {
+export async function ensureBootstrapSuperAdmin(): Promise<void> {
   if (superAdminEnsured) return;
-  try {
-    const superAdminPassword = String(process.env.SUPERADMIN_PASSWORD || "");
-    const adminPassword = String(process.env.ADMIN_PASSWORD || superAdminPassword);
-    if (!superAdminPassword && !adminPassword) return;
+  if (bootstrapPromise) return bootstrapPromise;
 
-    await ensureAuthSchema();
+  bootstrapPromise = (async () => {
+    try {
+      await runBootstrapSuperAdmin();
+      superAdminEnsured = true;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown bootstrap error";
+      logger.error({ err: error instanceof Error ? error : undefined, message }, "SUPERADMIN bootstrap failed");
+      // Do not permanently mark superAdminEnsured = true on failure so transient DB issues are retryable
+      throw error;
+    } finally {
+      bootstrapPromise = null;
+    }
+  })();
 
-    const rawAdminEmails = [
-      process.env.SUPERADMIN_EMAIL,
-      process.env.ADMIN_EMAIL,
-      ...(process.env.ADMIN_EMAILS || "").split(","),
-      process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-      ...(process.env.NEXT_PUBLIC_ADMIN_EMAILS || "").split(","),
-    ];
+  return bootstrapPromise;
+}
 
-    const adminEmails = Array.from(
-      new Set(
-        rawAdminEmails
-          .map((e) => String(e || "").trim().toLowerCase())
-          .filter(Boolean),
-      ),
+async function runBootstrapSuperAdmin(): Promise<void> {
+  const superAdminEmail = getSuperAdminEmail();
+  const adminEmails = getConfiguredAdminEmails();
+  if (adminEmails.length === 0) return;
+
+  const rawSuperAdminPassword = process.env.SUPERADMIN_PASSWORD;
+  const rawAdminPassword = process.env.ADMIN_PASSWORD;
+  const superAdminPassword = String(rawSuperAdminPassword || "").trim();
+  const adminPassword = String(rawAdminPassword || "").trim();
+
+  // Validate Super Admin configuration
+  if (superAdminEmail && !superAdminPassword) {
+    logger.warn(
+      { email: superAdminEmail, stage: "bootstrap_superadmin_config_check" },
+      "SUPERADMIN_EMAIL is configured but SUPERADMIN_PASSWORD is empty. Super Admin password provisioning skipped; existing DB hash or Supabase password will be preserved.",
+    );
+  }
+
+  await ensureAuthSchema();
+
+  const organizationName = normalizeOrganizationName(
+    String(process.env.SUPERADMIN_ORGANIZATION_NAME || "Platform Admin"),
+  );
+  const organizationKey = toOrganizationKey(organizationName);
+  const argon2 = await getArgon2();
+
+  for (const email of adminEmails) {
+    const isSuper = Boolean(superAdminEmail && email === superAdminEmail);
+    // Explicit source of truth: Super Admin uses SUPERADMIN_PASSWORD only.
+    // General admins use ADMIN_PASSWORD only.
+    const pwd = isSuper ? superAdminPassword : adminPassword;
+
+    const requestedUsername = normalizeBootstrapUsername(
+      isSuper
+        ? String(process.env.SUPERADMIN_USERNAME || email)
+        : email,
     );
 
-    if (adminEmails.length === 0) return;
-
-    const organizationName = normalizeOrganizationName(
-      String(process.env.SUPERADMIN_ORGANIZATION_NAME || "Platform Admin"),
+    const existingAuth = await queryNeonOneAsSystem<{
+      user_id: string;
+      password_hash: string | null;
+      neon_auth_user_id: string | null;
+    }>(
+      `SELECT user_id, password_hash, neon_auth_user_id
+       FROM public.auth_users
+       WHERE email_normalized = $1 OR LOWER(email) = $1
+       LIMIT 1`,
+      [email],
     );
-    const organizationKey = toOrganizationKey(organizationName);
-    const argon2 = await getArgon2();
 
-    const superAdminEmail = String(process.env.SUPERADMIN_EMAIL || "").trim().toLowerCase();
+    let userId = existingAuth?.user_id || "";
+    if (!userId) userId = crypto.randomUUID();
 
-    for (const email of adminEmails) {
-      const pwd = email === superAdminEmail ? superAdminPassword : adminPassword;
-      if (!pwd) continue;
-      const passwordHash = await argon2.hash(pwd, ARGON2_OPTIONS);
+    const usernameTakenByOther = await queryNeonOneAsSystem<{ id: string }>(
+      `SELECT id
+       FROM public.profiles
+       WHERE username = $1
+         AND id <> $2
+       LIMIT 1`,
+      [requestedUsername, userId],
+    );
+    const username = usernameTakenByOther?.id
+      ? `${requestedUsername}_${userId.replace(/-/g, "").slice(0, 8)}`
+      : requestedUsername;
 
-      const requestedUsername = normalizeBootstrapUsername(
-        email === superAdminEmail
-          ? String(process.env.SUPERADMIN_USERNAME || email)
-          : email,
-      );
+    await queryNeonAsSystem(
+      `INSERT INTO public.profiles (id, username, organization_name, organization_name_key, role, created_at)
+       VALUES ($1, $2, $3, $4, 'admin', now())
+       ON CONFLICT (id) DO UPDATE
+       SET role = 'admin',
+           username = EXCLUDED.username,
+           organization_name = EXCLUDED.organization_name,
+           organization_name_key = EXCLUDED.organization_name_key`,
+      [userId, username, organizationName, organizationKey || null],
+    );
 
-      const existingAuth = await queryNeonOneAsSystem<{ user_id: string; password_hash: string | null }>(
-        `SELECT user_id, password_hash
-         FROM public.auth_users
-         WHERE email_normalized = $1 OR LOWER(email) = $1
-         LIMIT 1`,
-        [email],
-      );
-
-      let userId = existingAuth?.user_id || "";
-      if (!userId) userId = crypto.randomUUID();
-
-      const usernameTakenByOther = await queryNeonOneAsSystem<{ id: string }>(
-        `SELECT id
-         FROM public.profiles
-         WHERE username = $1
-           AND id <> $2
-         LIMIT 1`,
-        [requestedUsername, userId],
-      );
-      const username = usernameTakenByOther?.id
-        ? `${requestedUsername}_${userId.replace(/-/g, "").slice(0, 8)}`
-        : requestedUsername;
-
-      await queryNeonAsSystem(
-        `INSERT INTO public.profiles (id, username, organization_name, organization_name_key, role, created_at)
-         VALUES ($1, $2, $3, $4, 'admin', now())
-         ON CONFLICT (id) DO UPDATE
-         SET role = 'admin',
-             username = EXCLUDED.username,
-             organization_name = EXCLUDED.organization_name,
-             organization_name_key = EXCLUDED.organization_name_key`,
-        [userId, username, organizationName, organizationKey || null],
-      );
-
-      // Preserve existing admin password hashes: never overwrite an already established password_hash on bootstrap
-      if (!existingAuth) {
+    // Password hash provisioning in Neon auth_users:
+    // Only insert if no row exists, or update if the row exists without a hash and password is provided.
+    // Never overwrite an already established password_hash.
+    if (!existingAuth) {
+      if (pwd) {
+        const passwordHash = await argon2.hash(pwd, ARGON2_OPTIONS);
         await queryNeonAsSystem(
           `INSERT INTO public.auth_users (user_id, email, email_normalized, password_hash, created_at, updated_at)
            VALUES ($1, $2, $2, $3, now(), now())`,
           [userId, email, passwordHash],
         );
-      } else if (!existingAuth.password_hash) {
+      } else {
         await queryNeonAsSystem(
-          `UPDATE public.auth_users
-           SET password_hash = $1, updated_at = now()
-           WHERE user_id = $2`,
-          [passwordHash, userId],
+          `INSERT INTO public.auth_users (user_id, email, email_normalized, created_at, updated_at)
+           VALUES ($1, $2, $2, now(), now())`,
+          [userId, email],
         );
       }
-
-      if (organizationKey) {
-        await queryNeonAsSystem(
-          `INSERT INTO public.organizations (organization_name, organization_name_key, owner_user_id, created_at, updated_at)
-           VALUES ($1, $2, $3, now(), now())
-           ON CONFLICT (organization_name_key)
-           DO UPDATE SET owner_user_id = EXCLUDED.owner_user_id, organization_name = EXCLUDED.organization_name, updated_at = now()`,
-          [organizationName, organizationKey, userId],
-        );
-      }
+    } else if (!existingAuth.password_hash && pwd) {
+      const passwordHash = await argon2.hash(pwd, ARGON2_OPTIONS);
+      await queryNeonAsSystem(
+        `UPDATE public.auth_users
+         SET password_hash = $1, updated_at = now()
+         WHERE user_id = $2`,
+        [passwordHash, userId],
+      );
     }
 
-    superAdminEnsured = true;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown bootstrap error";
-    logger.error({ err: error instanceof Error ? error : undefined, message }, "SUPERADMIN bootstrap failed");
-    superAdminEnsured = true;
+    if (organizationKey) {
+      await queryNeonAsSystem(
+        `INSERT INTO public.organizations (organization_name, organization_name_key, owner_user_id, created_at, updated_at)
+         VALUES ($1, $2, $3, now(), now())
+         ON CONFLICT (organization_name_key)
+         DO UPDATE SET owner_user_id = EXCLUDED.owner_user_id, organization_name = EXCLUDED.organization_name, updated_at = now()`,
+        [organizationName, organizationKey, userId],
+      );
+    }
+
+    // Supabase Auth synchronization:
+    // Ensure the admin account exists in Supabase Auth, is pre-confirmed (email_confirm: true),
+    // has role: "admin" in app_metadata, and links neon_auth_user_id in public.auth_users.
+    try {
+      const syncResult = await syncSupabaseAuthUser({
+        email,
+        password: pwd || undefined,
+        name: username,
+        role: "admin",
+        emailConfirm: true,
+      });
+      if (syncResult?.success && syncResult?.userId) {
+        await queryNeonAsSystem(
+          `UPDATE public.auth_users
+           SET neon_auth_user_id = $1, updated_at = now()
+           WHERE user_id = $2`,
+          [syncResult.userId, userId],
+        );
+      }
+    } catch (syncErr) {
+      logger.warn(
+        {
+          email,
+          err: syncErr instanceof Error ? syncErr.message : String(syncErr),
+          stage: "bootstrap_supabase_sync",
+        },
+        "Could not synchronize admin user to Supabase Auth during bootstrap",
+      );
+    }
   }
 }
 

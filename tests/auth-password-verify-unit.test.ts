@@ -23,6 +23,9 @@ describe("verifyPassword & legacy password verification unit tests", () => {
     process.env = { ...originalEnv };
     delete process.env.SUPERADMIN_PASSWORD;
     delete process.env.ADMIN_PASSWORD;
+    delete process.env.SUPERADMIN_EMAIL;
+    delete process.env.ADMIN_EMAIL;
+    delete process.env.ADMIN_EMAILS;
   });
 
   afterEach(() => {

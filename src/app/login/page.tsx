@@ -145,7 +145,7 @@ export default function LoginPage() {
     if (signInResult.error) {
       setError(
         signInResult.error.message ||
-          "Your account was migrated, but sign-in failed. Please try signing in again.",
+        "Your account was migrated, but sign-in failed. Please try signing in again.",
       );
       return true;
     }
@@ -192,7 +192,8 @@ export default function LoginPage() {
         if (result?.error) {
           const classified = classifySupabaseError(result.error);
           if (classified.type === "email_not_confirmed") {
-            setError(classified.userMessage);
+            const migrated = await tryLegacyMigrationLogin(normalizedEmail, rawPassword);
+            if (!migrated) setError(classified.userMessage);
             return;
           }
           if (classified.type === "rate_limited") {
@@ -223,7 +224,8 @@ export default function LoginPage() {
       if (result?.error) {
         const classified = classifySupabaseError(result.error);
         if (classified.type === "email_not_confirmed") {
-          setError(classified.userMessage);
+          const migrated = await tryLegacyMigrationLogin(normalizedEmail, rawPassword);
+          if (!migrated) setError(classified.userMessage);
           return;
         }
         if (classified.type === "rate_limited") {

@@ -4,6 +4,7 @@ import { getServerUserIdFromCookies } from "@/lib/auth-server";
 import { runWithTenantContextAsync, type TenantContext } from "@/lib/tenant/context";
 import { buildTenantContextForUser } from "@/lib/tenant/resolve";
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 export class ApiUnauthorizedError extends Error {
   constructor() {
@@ -25,13 +26,9 @@ export function apiRouteErrorResponse(error: unknown, fallbackMessage: string): 
 }
 
 function isSessionAdmin(session: Awaited<ReturnType<typeof getServerAuthSession>>): boolean {
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
   const role = String(session?.user?.role || "").toLowerCase();
   const email = String(session?.user?.email || "").trim().toLowerCase();
-  return role === "admin" || Boolean(email && adminEmails.includes(email));
+  return role === "admin" || isConfiguredAdminEmail(email);
 }
 
 export async function resolveTenantContextFromCookies(

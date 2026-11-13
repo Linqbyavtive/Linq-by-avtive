@@ -91,6 +91,7 @@ export async function POST(req: Request) {
       email,
       password,
       name: user.username || user.email,
+      role: user.role || undefined,
       emailConfirm: true,
     });
   } catch (err: unknown) {

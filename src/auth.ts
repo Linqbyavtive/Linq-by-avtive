@@ -4,6 +4,7 @@ import {
   getAuthUserByEmail,
   registerUser,
 } from "@/lib/auth-db";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 export type AppAuthSession = {
   expires: string;
@@ -15,14 +16,6 @@ export type AppAuthSession = {
     organizationName: string;
   };
 };
-
-function isAdminEmail(email: string) {
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return adminEmails.includes(email.trim().toLowerCase());
-}
 
 export async function getServerAuthSession(): Promise<AppAuthSession | null> {
   try {
@@ -77,7 +70,7 @@ export async function getServerAuthSession(): Promise<AppAuthSession | null> {
     const payload = await getAuthSessionPayloadByUserId(internalUserId);
     if (!payload) return null;
 
-    const role = isAdminEmail(payload.email) ? "admin" : (payload.role || "user");
+    const role = isConfiguredAdminEmail(payload.email) ? "admin" : (payload.role || "user");
     return {
       expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       user: {

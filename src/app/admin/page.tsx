@@ -1,6 +1,7 @@
 import { listAdminUsers } from "@/lib/admin";
 import { queryNeon } from "@/lib/neon-db";
 import { listOrganizationRegistrationRequests } from "@/lib/organization/registration-db";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 import {
   Users,
   BarChart3,
@@ -73,13 +74,9 @@ export default async function AdminDashboardPage() {
     listOrganizationRegistrationRequests({ limit: 10 }),
   ]);
 
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.toLowerCase().trim())
-    .filter(Boolean);
   const rawUsers = (userData?.data || []).filter((u) => {
     const email = u.email?.toLowerCase().trim();
-    return !email || !adminEmails.includes(email);
+    return !email || !isConfiguredAdminEmail(email);
   });
 
   const profileLookup = new Map();

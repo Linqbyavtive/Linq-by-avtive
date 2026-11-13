@@ -7,15 +7,12 @@ import { sendOrganizationCreatedWelcomeEmail } from "@/lib/notifications/org-ema
 import { logger } from "@/lib/logger-server";
 import { enterApiLogContextFromRequest } from "@/lib/request-log-context";
 import { queryNeon } from "@/lib/neon-db";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 function isSessionAdmin(session: Awaited<ReturnType<typeof getServerAuthSession>>) {
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
   const role = String(session?.user?.role || "").toLowerCase();
   const email = String(session?.user?.email || "").trim().toLowerCase();
-  return role === "admin" || Boolean(email && adminEmails.includes(email));
+  return role === "admin" || isConfiguredAdminEmail(email);
 }
 
 export async function GET(req: Request) {

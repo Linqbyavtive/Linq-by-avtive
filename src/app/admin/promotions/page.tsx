@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { queryNeon } from "@/lib/neon-db";
 import { PromotionChannelSelect } from "@/components/admin/promotion/PromotionChannelSelect";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +15,10 @@ export default async function AdminPromotionsPage() {
     redirect("/login");
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
   const sessionEmail = session?.user?.email?.trim().toLowerCase();
   const role = String(session?.user?.role || "");
   const isAdminByRole = typeof role === "string" && role.toLowerCase() === "admin";
-  const isAdminByEmail = Boolean(sessionEmail && adminEmails.includes(sessionEmail));
+  const isAdminByEmail = isConfiguredAdminEmail(sessionEmail);
 
   let isOrgAdmin = false;
   if (userId) {

@@ -38,6 +38,7 @@ export type SyncSupabaseAuthUserParams = {
   email: string;
   password?: string;
   name?: string;
+  role?: string;
   emailConfirm?: boolean;
 };
 
@@ -45,6 +46,13 @@ export type SyncSupabaseAuthUserResult = {
   success: boolean;
   userId?: string;
   error?: string;
+};
+
+export type FindSupabaseUserResult = {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
 };
 
 export class SupabaseAdminError extends Error {
@@ -58,10 +66,33 @@ export class SupabaseAdminError extends Error {
   }
 }
 
+export function getSupabaseProjectHostDiagnostics(): {
+  publicHost: string | null;
+  serverHost: string | null;
+  isConsistent: boolean;
+} {
+  let publicHost: string | null = null;
+  let serverHost: string | null = null;
+  try {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      publicHost = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname;
+    }
+  } catch {}
+  try {
+    const srv = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+    if (srv) {
+      serverHost = new URL(srv).hostname;
+    }
+  } catch {}
+
+  const isConsistent = !publicHost || !serverHost || publicHost === serverHost;
+  return { publicHost, serverHost, isConsistent };
+}
+
 export async function findSupabaseUserByEmail(
   supabaseAdmin: SupabaseClient,
   email: string,
-): Promise<{ id: string; email?: string } | null> {
+): Promise<FindSupabaseUserResult | null> {
   const targetEmail = email.toLowerCase().trim();
 
   // Fast path 1: Check public.auth_users for a candidate linked Supabase user id
@@ -89,7 +120,12 @@ export async function findSupabaseUserByEmail(
       } else if (data?.user?.id) {
         const candidateEmail = data.user.email?.toLowerCase().trim();
         if (!candidateEmail || candidateEmail === targetEmail) {
-          return { id: data.user.id, email: data.user.email };
+          return {
+            id: data.user.id,
+            email: data.user.email,
+            user_metadata: (data.user.user_metadata as Record<string, unknown>) || {},
+            app_metadata: (data.user.app_metadata as Record<string, unknown>) || {},
+          };
         }
       }
     }
@@ -116,7 +152,14 @@ export async function findSupabaseUserByEmail(
     const match = data.users.find(
       (u) => u.email?.toLowerCase().trim() === targetEmail,
     );
-    if (match) return { id: match.id, email: match.email };
+    if (match) {
+      return {
+        id: match.id,
+        email: match.email,
+        user_metadata: (match.user_metadata as Record<string, unknown>) || {},
+        app_metadata: (match.app_metadata as Record<string, unknown>) || {},
+      };
+    }
     if (data.users.length < perPage) {
       return null;
     }
@@ -153,22 +196,50 @@ export async function syncSupabaseAuthUser(
     }
 
     if (existing?.id) {
-      // User exists: update password and confirm email
+      // User exists: update password and confirm email, preserving existing user_metadata and app_metadata
+      const mergedUserMetadata: Record<string, unknown> = {
+        ...(existing.user_metadata || {}),
+        ...(params.name ? { name: params.name } : {}),
+        ...(params.role ? { role: params.role } : {}),
+      };
+      const mergedAppMetadata: Record<string, unknown> = {
+        ...(existing.app_metadata || {}),
+        ...(params.role ? { role: params.role } : {}),
+      };
+
       const updatePayload: {
         password?: string;
         email_confirm?: boolean;
-        user_metadata?: { name?: string };
+        user_metadata?: Record<string, unknown>;
+        app_metadata?: Record<string, unknown>;
       } = {
         email_confirm: emailConfirm,
       };
       if (params.password) updatePayload.password = params.password;
-      if (params.name) updatePayload.user_metadata = { name: params.name };
+      if (Object.keys(mergedUserMetadata).length > 0) {
+        updatePayload.user_metadata = mergedUserMetadata;
+      }
+      if (Object.keys(mergedAppMetadata).length > 0) {
+        updatePayload.app_metadata = mergedAppMetadata;
+      }
 
       const { data: updateData, error: updateError } =
         await supabaseAdmin.auth.admin.updateUserById(existing.id, updatePayload);
 
       if (updateError) {
         return { success: false, error: updateError.message };
+      }
+
+      if (
+        emailConfirm &&
+        updateData?.user &&
+        "email_confirmed_at" in updateData.user &&
+        !updateData.user.email_confirmed_at
+      ) {
+        return {
+          success: false,
+          error: "Supabase Admin API updated user but email confirmation timestamp was not set.",
+        };
       }
 
       return {
@@ -183,7 +254,13 @@ export async function syncSupabaseAuthUser(
         email: normalizedEmail,
         password: params.password,
         email_confirm: emailConfirm,
-        user_metadata: params.name ? { name: params.name } : undefined,
+        user_metadata: (params.name || params.role)
+          ? {
+            ...(params.name ? { name: params.name } : {}),
+            ...(params.role ? { role: params.role } : {}),
+          }
+          : undefined,
+        app_metadata: params.role ? { role: params.role } : undefined,
       });
 
     if (createError) {
@@ -198,19 +275,46 @@ export async function syncSupabaseAuthUser(
         try {
           const raceExisting = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
           if (raceExisting?.id) {
+            const mergedUserMetadata: Record<string, unknown> = {
+              ...(raceExisting.user_metadata || {}),
+              ...(params.name ? { name: params.name } : {}),
+              ...(params.role ? { role: params.role } : {}),
+            };
+            const mergedAppMetadata: Record<string, unknown> = {
+              ...(raceExisting.app_metadata || {}),
+              ...(params.role ? { role: params.role } : {}),
+            };
+
             const updatePayload: {
               password?: string;
               email_confirm?: boolean;
-              user_metadata?: { name?: string };
+              user_metadata?: Record<string, unknown>;
+              app_metadata?: Record<string, unknown>;
             } = {
               email_confirm: emailConfirm,
             };
             if (params.password) updatePayload.password = params.password;
-            if (params.name) updatePayload.user_metadata = { name: params.name };
+            if (Object.keys(mergedUserMetadata).length > 0) {
+              updatePayload.user_metadata = mergedUserMetadata;
+            }
+            if (Object.keys(mergedAppMetadata).length > 0) {
+              updatePayload.app_metadata = mergedAppMetadata;
+            }
 
             const { data: raceUpdate, error: raceErr } =
               await supabaseAdmin.auth.admin.updateUserById(raceExisting.id, updatePayload);
             if (!raceErr && (raceUpdate?.user?.id || raceExisting.id)) {
+              if (
+                emailConfirm &&
+                raceUpdate?.user &&
+                "email_confirmed_at" in raceUpdate.user &&
+                !raceUpdate.user.email_confirmed_at
+              ) {
+                return {
+                  success: false,
+                  error: "Supabase Admin API updated user but email confirmation timestamp was not set.",
+                };
+              }
               return { success: true, userId: raceUpdate?.user?.id || raceExisting.id };
             }
           }
@@ -220,6 +324,18 @@ export async function syncSupabaseAuthUser(
       }
 
       return { success: false, error: createError.message };
+    }
+
+    if (
+      emailConfirm &&
+      createData?.user &&
+      "email_confirmed_at" in createData.user &&
+      !createData.user.email_confirmed_at
+    ) {
+      return {
+        success: false,
+        error: "Supabase Admin API created user but email confirmation timestamp was not set.",
+      };
     }
 
     return {

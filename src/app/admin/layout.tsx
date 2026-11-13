@@ -7,6 +7,7 @@ import GradientBackground from "@/components/GradientBackground";
 import ExitAdminButton from "./_components/ExitAdminButton";
 import { AdminNavTabs } from "./_components/AdminNavTabs";
 import { queryNeonOneAsSystem } from "@/lib/neon-db";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect("/login");
   }
 
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
   const sessionEmail = session?.user?.email?.trim().toLowerCase();
   const role = String(session?.user?.role || "");
   const isAdminByRole = typeof role === "string" && role.toLowerCase() === "admin";
-  const isAdminByEmail = Boolean(sessionEmail && adminEmails.includes(sessionEmail));
+  const isAdminByEmail = isConfiguredAdminEmail(sessionEmail);
 
   let isOrgAdmin = false;
   if (userId) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createSupabaseMiddlewareClient } from "@/utils/supabase/middleware";
 import { classifyApiRoute, clientIp, getRateLimiters, rateLimitKey } from "@/lib/rate-limit";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 const isProtectedRoute =
   /^\/(dashboard|admin|events)(\/.*)?$|^\/cards(\/.*)?$|^\/organization(?!\/(register|status))(\/.*)?$|^\/invite(\/.*)?$/;
@@ -108,7 +109,7 @@ export default async function middleware(request: NextRequest) {
 
   // 3. Protect all dashboard and private routes using Supabase Auth exclusively
   const response = NextResponse.next({ request: { headers: reqHeaders } });
-  let user: { id: string; email?: string; app_metadata?: Record<string, any>; user_metadata?: Record<string, any> } | null = null;
+  let user: { id: string; email?: string; app_metadata?: Record<string, unknown>; user_metadata?: Record<string, unknown> } | null = null;
 
   try {
     const supabase = createSupabaseMiddlewareClient(request, response);
@@ -132,11 +133,7 @@ export default async function middleware(request: NextRequest) {
   // Role resolution: check admin status
   const userEmail = String(user.email || "").toLowerCase().trim();
   const userRole = String(user.app_metadata?.role || user.user_metadata?.role || "").toLowerCase();
-  const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const isAdminUser = userRole === "admin" || Boolean(userEmail && adminEmails.includes(userEmail));
+  const isAdminUser = userRole === "admin" || isConfiguredAdminEmail(userEmail);
 
   // Redirect admin users visiting /dashboard to /admin unless impersonating
   if (pathname.startsWith("/dashboard") && isAdminUser && !url.searchParams.get("impersonate")) {

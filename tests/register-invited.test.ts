@@ -75,3 +75,4 @@ describe("POST /api/auth/register-invited", () => {
     });
   });
 });
+

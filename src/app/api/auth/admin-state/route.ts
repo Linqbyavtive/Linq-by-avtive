@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerAuthSession } from "@/auth";
 import { queryNeonOneAsSystem } from "@/lib/neon-db";
+import { isConfiguredAdminEmail } from "@/lib/auth/admin-emails";
 
 export async function GET() {
   try {
@@ -8,13 +9,9 @@ export async function GET() {
     const userId = String(session?.user?.id || "").trim();
     if (!userId) return NextResponse.json({ data: { isAdmin: false, pendingRequestsCount: 0 } }, { status: 200 });
 
-    const adminEmails = (process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || "")
-      .split(",")
-      .map((e) => e.trim().toLowerCase())
-      .filter(Boolean);
     const role = String(session?.user?.role || "").toLowerCase();
     const email = String(session?.user?.email || "").toLowerCase().trim();
-    const isAdmin = role === "admin" || Boolean(email && adminEmails.includes(email));
+    const isAdmin = role === "admin" || isConfiguredAdminEmail(email);
 
     let pendingRequestsCount = 0;
     if (isAdmin) {
