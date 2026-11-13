@@ -90,8 +90,8 @@ async function ensureBootstrapSuperAdmin() {
           : email,
       );
 
-      const existingAuth = await queryNeonOneAsSystem<{ user_id: string }>(
-        `SELECT user_id
+      const existingAuth = await queryNeonOneAsSystem<{ user_id: string; password_hash: string | null }>(
+        `SELECT user_id, password_hash
          FROM public.auth_users
          WHERE email_normalized = $1 OR LOWER(email) = $1
          LIMIT 1`,
@@ -124,16 +124,21 @@ async function ensureBootstrapSuperAdmin() {
         [userId, username, organizationName, organizationKey || null],
       );
 
-      await queryNeonAsSystem(
-        `INSERT INTO public.auth_users (user_id, email, email_normalized, password_hash, created_at, updated_at)
-         VALUES ($1, $2, $2, $3, now(), now())
-         ON CONFLICT (user_id) DO UPDATE
-         SET email = EXCLUDED.email,
-             email_normalized = EXCLUDED.email_normalized,
-             password_hash = EXCLUDED.password_hash,
-             updated_at = now()`,
-        [userId, email, passwordHash],
-      );
+      // Preserve existing admin password hashes: never overwrite an already established password_hash on bootstrap
+      if (!existingAuth) {
+        await queryNeonAsSystem(
+          `INSERT INTO public.auth_users (user_id, email, email_normalized, password_hash, created_at, updated_at)
+           VALUES ($1, $2, $2, $3, now(), now())`,
+          [userId, email, passwordHash],
+        );
+      } else if (!existingAuth.password_hash) {
+        await queryNeonAsSystem(
+          `UPDATE public.auth_users
+           SET password_hash = $1, updated_at = now()
+           WHERE user_id = $2`,
+          [passwordHash, userId],
+        );
+      }
 
       if (organizationKey) {
         await queryNeonAsSystem(

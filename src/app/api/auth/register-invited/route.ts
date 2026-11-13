@@ -40,6 +40,13 @@ export async function POST(req: Request) {
       emailConfirm: true,
     });
 
+    if (!syncRes.success) {
+      return NextResponse.json(
+        { error: syncRes.error || "Failed to provision Supabase authentication account." },
+        { status: 500 },
+      );
+    }
+
     if (syncRes.userId) {
       neonAuthUserId = syncRes.userId;
     }

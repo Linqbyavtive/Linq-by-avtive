@@ -55,21 +55,73 @@ export default function LoginPage() {
 
   const handlePasswordPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").trim();
+    const pasted = e.clipboardData.getData("text");
     const target = e.currentTarget;
     const start = target.selectionStart ?? 0;
     const end = target.selectionEnd ?? password.length;
-    const nextValue = (password.slice(0, start) + pasted + password.slice(end)).trim();
+    const nextValue = password.slice(0, start) + pasted + password.slice(end);
     setPassword(nextValue);
   };
 
-  const tryLegacyMigrationLogin = async (trimmedEmail: string, trimmedPassword: string) => {
+  const classifySupabaseError = (errObj?: { message?: string; code?: string; status?: number }) => {
+    const msg = errObj?.message?.toLowerCase() || "";
+    const code = errObj?.code?.toLowerCase() || "";
+    const status = errObj?.status;
+
+    if (code === "email_not_confirmed" || msg.includes("email not confirmed")) {
+      return {
+        type: "email_not_confirmed" as const,
+        userMessage: "Your email address is not verified yet. Please check your inbox.",
+      };
+    }
+    if (
+      status === 429 ||
+      code === "over_request_rate_limit" ||
+      msg.includes("rate limit") ||
+      msg.includes("too many requests")
+    ) {
+      return {
+        type: "rate_limited" as const,
+        userMessage: "Too many login attempts. Please wait a moment and try again.",
+      };
+    }
+    if (
+      (typeof status === "number" && status >= 500) ||
+      msg.includes("fetch failed") ||
+      msg.includes("network") ||
+      msg.includes("failed to fetch") ||
+      msg.includes("service unavailable")
+    ) {
+      return {
+        type: "network_failure" as const,
+        userMessage: "Authentication service is temporarily unavailable. Please check your connection and try again.",
+      };
+    }
+    if (
+      code === "invalid_credentials" ||
+      status === 400 ||
+      msg.includes("invalid login credentials") ||
+      msg.includes("invalid credentials")
+    ) {
+      return {
+        type: "invalid_credentials" as const,
+        userMessage: "Incorrect email or password.",
+      };
+    }
+
+    return {
+      type: "general" as const,
+      userMessage: errObj?.message || "Incorrect email or password.",
+    };
+  };
+
+  const tryLegacyMigrationLogin = async (normalizedEmail: string, rawPassword: string) => {
     let migrationRes: Response;
     try {
       migrationRes = await fetch("/api/auth/migrate-legacy-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, password: trimmedPassword }),
+        body: JSON.stringify({ email: normalizedEmail, password: rawPassword }),
       });
     } catch {
       setError("Authentication service is temporarily unavailable. Please try again shortly.");
@@ -87,8 +139,8 @@ export default function LoginPage() {
     // The user has been verified and synced into Supabase Auth by the server.
     // Directly sign in to establish the authenticated session.
     const signInResult = await authClient.signIn.email({
-      email: trimmedEmail,
-      password: trimmedPassword,
+      email: normalizedEmail,
+      password: rawPassword,
     });
     if (signInResult.error) {
       setError(
@@ -101,11 +153,11 @@ export default function LoginPage() {
     return true;
   };
 
-  const signInWithSupabase = async (trimmedEmail: string, trimmedPassword: string) => {
+  const signInWithSupabase = async (normalizedEmail: string, rawPassword: string) => {
     try {
       return await authClient.signIn.email({
-        email: trimmedEmail,
-        password: trimmedPassword,
+        email: normalizedEmail,
+        password: rawPassword,
       });
     } catch (err: unknown) {
       return {
@@ -121,9 +173,9 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const rawPassword = password;
+    if (!normalizedEmail || !rawPassword) {
       setError("Please enter your email and password.");
       return;
     }
@@ -136,15 +188,27 @@ export default function LoginPage() {
           setError("Enter the verification code from your email.");
           return;
         }
-        const result = await signInWithSupabase(trimmedEmail, trimmedPassword);
+        const result = await signInWithSupabase(normalizedEmail, rawPassword);
         if (result?.error) {
-          const errMsg = result.error.message?.toLowerCase() || "";
-          if (errMsg.includes("email not confirmed")) {
-            setError("Your email address is not verified yet. Please check your inbox.");
+          const classified = classifySupabaseError(result.error);
+          if (classified.type === "email_not_confirmed") {
+            setError(classified.userMessage);
             return;
           }
-          const migrated = await tryLegacyMigrationLogin(trimmedEmail, trimmedPassword);
-          if (!migrated) setError("Incorrect email, password, or verification code.");
+          if (classified.type === "rate_limited") {
+            setError(classified.userMessage);
+            return;
+          }
+          if (classified.type === "network_failure") {
+            setError(classified.userMessage);
+            return;
+          }
+          if (classified.type === "invalid_credentials") {
+            const migrated = await tryLegacyMigrationLogin(normalizedEmail, rawPassword);
+            if (!migrated) setError("Incorrect email, password, or verification code.");
+            return;
+          }
+          setError(classified.userMessage);
           return;
         }
         if (result?.data) {
@@ -155,15 +219,27 @@ export default function LoginPage() {
         return;
       }
 
-      const result = await signInWithSupabase(trimmedEmail, trimmedPassword);
+      const result = await signInWithSupabase(normalizedEmail, rawPassword);
       if (result?.error) {
-        const errMsg = result.error.message?.toLowerCase() || "";
-        if (errMsg.includes("email not confirmed")) {
-          setError("Your email address is not verified yet. Please check your inbox.");
+        const classified = classifySupabaseError(result.error);
+        if (classified.type === "email_not_confirmed") {
+          setError(classified.userMessage);
           return;
         }
-        const migrated = await tryLegacyMigrationLogin(trimmedEmail, trimmedPassword);
-        if (!migrated) setError(result.error.message || "Incorrect email or password.");
+        if (classified.type === "rate_limited") {
+          setError(classified.userMessage);
+          return;
+        }
+        if (classified.type === "network_failure") {
+          setError(classified.userMessage);
+          return;
+        }
+        if (classified.type === "invalid_credentials") {
+          const migrated = await tryLegacyMigrationLogin(normalizedEmail, rawPassword);
+          if (!migrated) setError(classified.userMessage);
+          return;
+        }
+        setError(classified.userMessage);
         return;
       }
       if (result?.data) {
@@ -258,7 +334,6 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onPaste={handlePasswordPaste}
-                    onBlur={() => setPassword((prev) => prev.trim())}
                     placeholder="••••••••••••"
                     className="w-full h-[52px] sm:h-[56px] xl:h-[60px] px-4 sm:px-[18px] pr-12 rounded-[12px] xl:rounded-[14px] border border-[#D8D8D8] bg-[#FFFFFF] text-[15px] sm:text-[16px] text-[#202020] placeholder:text-[#A0A0A0] focus:outline-none focus:border-[#743BE8] focus:ring-2 focus:ring-[#743BE8]/15 transition-all [box-shadow:0_0_0_1000px_white_inset]"
                   />

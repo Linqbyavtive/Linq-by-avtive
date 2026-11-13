@@ -3,6 +3,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const mockListUsers = vi.fn();
 const mockCreateUser = vi.fn();
 const mockUpdateUserById = vi.fn();
+const mockGetUserById = vi.fn();
 
 const mockClient = {
   auth: {
@@ -10,6 +11,7 @@ const mockClient = {
       listUsers: (...args: unknown[]) => mockListUsers(...args),
       createUser: (...args: unknown[]) => mockCreateUser(...args),
       updateUserById: (...args: unknown[]) => mockUpdateUserById(...args),
+      getUserById: (...args: unknown[]) => mockGetUserById(...args),
     },
   },
 };
@@ -21,6 +23,7 @@ vi.mock("@supabase/supabase-js", () => ({
 import {
   syncSupabaseAuthUser,
   findSupabaseUserByEmail,
+  SupabaseAdminError,
 } from "@/utils/supabase/admin";
 
 describe("syncSupabaseAuthUser & findSupabaseUserByEmail", () => {
@@ -59,9 +62,59 @@ describe("syncSupabaseAuthUser & findSupabaseUserByEmail", () => {
       const user = await findSupabaseUserByEmail(mockClient as any, "missing@example.com");
       expect(user).toBeNull();
     });
+    it("throws SupabaseAdminError when listUsers returns an API error", async () => {
+      mockListUsers.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Invalid API key", status: 401 },
+      });
+
+      await expect(
+        findSupabaseUserByEmail(mockClient as any, "err@example.com"),
+      ).rejects.toThrow(SupabaseAdminError);
+    });
   });
 
   describe("syncSupabaseAuthUser", () => {
+    it("does NOT call createUser if listUsers fails with an error", async () => {
+      mockListUsers.mockResolvedValueOnce({
+        data: null,
+        error: { message: "Internal server error in Supabase", status: 500 },
+      });
+
+      const res = await syncSupabaseAuthUser({
+        email: "lookupfail@example.com",
+        password: "Password123!",
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Supabase user lookup failed");
+      expect(mockCreateUser).not.toHaveBeenCalled();
+    });
+
+    it("preserves leading and trailing spaces in passwords during user creation", async () => {
+      mockListUsers.mockResolvedValueOnce({
+        data: { users: [] },
+        error: null,
+      });
+
+      mockCreateUser.mockResolvedValueOnce({
+        data: { user: { id: "spaced-user-id", email: "spaced@example.com" } },
+        error: null,
+      });
+
+      const res = await syncSupabaseAuthUser({
+        email: "spaced@example.com",
+        password: "  Password With Spaces  ",
+      });
+
+      expect(res.success).toBe(true);
+      expect(mockCreateUser).toHaveBeenCalledWith({
+        email: "spaced@example.com",
+        password: "  Password With Spaces  ",
+        email_confirm: true,
+        user_metadata: undefined,
+      });
+    });
     it("creates a new user with confirmed email when they do not exist", async () => {
       mockListUsers.mockResolvedValueOnce({
         data: { users: [] },

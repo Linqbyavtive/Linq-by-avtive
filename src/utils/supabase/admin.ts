@@ -47,13 +47,25 @@ export type SyncSupabaseAuthUserResult = {
   error?: string;
 };
 
+export class SupabaseAdminError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode?: number,
+    public readonly code?: string,
+  ) {
+    super(message);
+    this.name = "SupabaseAdminError";
+  }
+}
+
 export async function findSupabaseUserByEmail(
   supabaseAdmin: SupabaseClient,
   email: string,
 ): Promise<{ id: string; email?: string } | null> {
   const targetEmail = email.toLowerCase().trim();
 
-  // Fast path 1: Check public.auth_users for an already linked Supabase user id
+  // Fast path 1: Check public.auth_users for a candidate linked Supabase user id
+  // Note: auth_users.neon_auth_user_id is treated strictly as a candidate link and verified against Supabase Admin API.
   try {
     const linked = await queryNeonOneAsSystem<{ neon_auth_user_id: string }>(
       `SELECT neon_auth_user_id
@@ -65,41 +77,49 @@ export async function findSupabaseUserByEmail(
     );
     if (linked?.neon_auth_user_id && typeof supabaseAdmin.auth.admin.getUserById === "function") {
       const { data, error } = await supabaseAdmin.auth.admin.getUserById(linked.neon_auth_user_id);
-      if (!error && data?.user?.id) {
-        return { id: data.user.id, email: data.user.email };
+      if (error) {
+        if (error.status === 401 || error.status === 403) {
+          throw new SupabaseAdminError(
+            error.message || "Supabase Admin API unauthorized.",
+            error.status,
+            (error as unknown as { code?: string }).code,
+          );
+        }
+        // If 404 or other not-found error, the historical ID no longer exists in this Supabase project; continue to listUsers
+      } else if (data?.user?.id) {
+        const candidateEmail = data.user.email?.toLowerCase().trim();
+        if (!candidateEmail || candidateEmail === targetEmail) {
+          return { id: data.user.id, email: data.user.email };
+        }
       }
     }
-  } catch {
-    // Database query failed or table not found; proceed to direct auth schema / GoTrue
+  } catch (dbErr) {
+    if (dbErr instanceof SupabaseAdminError) throw dbErr;
+    // Database query failed or table not found; proceed to direct Supabase Admin API listUsers
   }
 
-  // Fast path 2: Direct lookup in auth.users table in Supabase Postgres schema
-  try {
-    const authUser = await queryNeonOneAsSystem<{ id: string; email: string }>(
-      `SELECT id, email
-       FROM auth.users
-       WHERE LOWER(email) = $1
-       LIMIT 1`,
-      [targetEmail],
-    );
-    if (authUser?.id) {
-      return { id: authUser.id, email: authUser.email };
-    }
-  } catch {
-    // auth.users not accessible or non-postgres environment; proceed to listUsers API
-  }
-
-  // Standard path: Paginated lookup via GoTrue Admin API listUsers
+  // Standard path: Paginated lookup directly via GoTrue Admin API listUsers
   let page = 1;
   const perPage = 100;
-  while (page <= 20) {
+  while (page <= 50) {
     const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
-    if (error || !data?.users?.length) break;
+    if (error) {
+      throw new SupabaseAdminError(
+        error.message || "Failed to list Supabase users from Admin API.",
+        error.status,
+        (error as unknown as { code?: string }).code,
+      );
+    }
+    if (!data?.users || data.users.length === 0) {
+      return null;
+    }
     const match = data.users.find(
       (u) => u.email?.toLowerCase().trim() === targetEmail,
     );
-    if (match) return match;
-    if (data.users.length < perPage) break;
+    if (match) return { id: match.id, email: match.email };
+    if (data.users.length < perPage) {
+      return null;
+    }
     page++;
   }
   return null;
@@ -121,7 +141,16 @@ export async function syncSupabaseAuthUser(
 
   try {
     // 1. Check if the user already exists in Supabase Auth
-    const existing = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
+    let existing;
+    try {
+      existing = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
+    } catch (lookupErr) {
+      const errMsg = lookupErr instanceof Error ? lookupErr.message : String(lookupErr);
+      return {
+        success: false,
+        error: `Supabase user lookup failed: ${errMsg}`,
+      };
+    }
 
     if (existing?.id) {
       // User exists: update password and confirm email
@@ -148,7 +177,7 @@ export async function syncSupabaseAuthUser(
       };
     }
 
-    // 2. User does not exist: create with confirmed email (bypasses SMTP)
+    // 2. User is confirmed absent: create with confirmed email (bypasses SMTP)
     const { data: createData, error: createError } =
       await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,
@@ -166,23 +195,27 @@ export async function syncSupabaseAuthUser(
         createError.status === 422;
 
       if (isAlready) {
-        const raceExisting = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
-        if (raceExisting?.id) {
-          const updatePayload: {
-            password?: string;
-            email_confirm?: boolean;
-            user_metadata?: { name?: string };
-          } = {
-            email_confirm: emailConfirm,
-          };
-          if (params.password) updatePayload.password = params.password;
-          if (params.name) updatePayload.user_metadata = { name: params.name };
+        try {
+          const raceExisting = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
+          if (raceExisting?.id) {
+            const updatePayload: {
+              password?: string;
+              email_confirm?: boolean;
+              user_metadata?: { name?: string };
+            } = {
+              email_confirm: emailConfirm,
+            };
+            if (params.password) updatePayload.password = params.password;
+            if (params.name) updatePayload.user_metadata = { name: params.name };
 
-          const { data: raceUpdate, error: raceErr } =
-            await supabaseAdmin.auth.admin.updateUserById(raceExisting.id, updatePayload);
-          if (!raceErr && (raceUpdate?.user?.id || raceExisting.id)) {
-            return { success: true, userId: raceUpdate?.user?.id || raceExisting.id };
+            const { data: raceUpdate, error: raceErr } =
+              await supabaseAdmin.auth.admin.updateUserById(raceExisting.id, updatePayload);
+            if (!raceErr && (raceUpdate?.user?.id || raceExisting.id)) {
+              return { success: true, userId: raceUpdate?.user?.id || raceExisting.id };
+            }
           }
+        } catch {
+          // Fall through to error return below
         }
       }
 

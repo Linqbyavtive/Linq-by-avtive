@@ -167,4 +167,34 @@ describe("POST /api/auth/migrate-legacy-login", () => {
     const body = await res.json();
     expect(body.error).toContain("Authentication service is temporarily unavailable");
   });
+
+  it("preserves exact password with leading or trailing whitespace", async () => {
+    const rawPassword = "  P@sswordWithSpaces!  ";
+    mockVerifyPassword.mockResolvedValueOnce({
+      user_id: "user-spaces",
+      email: "spaces@example.com",
+      username: "spacesuser",
+    });
+
+    mockSyncSupabaseAuthUser.mockResolvedValueOnce({
+      success: true,
+      userId: "sb-spaces-id",
+    });
+
+    const req = new Request("http://localhost:3000/api/auth/migrate-legacy-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "spaces@example.com", password: rawPassword }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockVerifyPassword).toHaveBeenCalledWith("spaces@example.com", rawPassword);
+    expect(mockSyncSupabaseAuthUser).toHaveBeenCalledWith({
+      email: "spaces@example.com",
+      password: rawPassword,
+      name: "spacesuser",
+      emailConfirm: true,
+    });
+  });
 });

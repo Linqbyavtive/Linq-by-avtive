@@ -1,63 +1,84 @@
-# Authentication Handoff
+# LINQ Authentication Architecture & Handoff
 
-## Current State
+## Current Production Architecture
 
-Authentication has been migrated from Auth.js / NextAuth credentials to Neon Auth.
+Authentication in LINQ is powered by **Supabase Auth** as the primary authentication and session authority, paired with **Neon Postgres** as the application database.
 
-- Neon Auth server entrypoint: `src/lib/auth/neon.ts`
-- Neon Auth client entrypoint: `src/lib/auth/client.ts`
-- Auth API handler: `src/app/api/auth/[...path]/route.ts`
-- App session compatibility helper: `src/auth.ts`
-- Protected-route proxy: `src/proxy.ts`
+- **Supabase Client (Browser):** `src/lib/auth/client.ts` / `src/utils/supabase/client.ts`
+- **Supabase Client (Server):** `src/utils/supabase/server.ts`
+- **Supabase Client (Admin/Management API):** `src/utils/supabase/admin.ts`
+- **Protected Route & Session Middleware:** `src/proxy.ts` / `src/utils/supabase/middleware.ts`
+- **Application Session Helper:** `src/auth.ts` (`getServerAuthSession()`)
+- **Legacy Credential Migration Route:** `src/app/api/auth/migrate-legacy-login/route.ts`
+- **Auth User Repository:** `src/lib/auth-db.ts`
 
-The app still uses its existing business identity tables:
+### Architectural Roles & Responsibilities
 
-- `public.profiles`
-- `public.auth_users`
+1. **Supabase Auth (Authoritative Session & Credential Authority):**
+   - Handles password authentication via `/auth/v1/token?grant_type=password`.
+   - Manages refresh tokens, JWTs, and HTTP-only session cookies via `@supabase/ssr`.
+   - Stores authoritative Supabase user IDs (`user.id`).
+   - The GoTrue Admin API is used exclusively server-side (via `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`) for just-in-time credential migration and admin user creation with pre-confirmed email.
 
-Neon Auth is the login/session/password authority. The app maps a Neon Auth user to the internal app user through `auth_users.neon_auth_user_id`, falling back to email linking during session resolution.
+2. **Neon Postgres (Application & Tenant Authority):**
+   - Stores tenant profiles (`public.profiles`), organizations (`public.organizations`), events, attendees, and cards.
+   - Manages `public.auth_users`, which holds internal user UUIDs (`user_id`), normalized email lookups, and historical Argon2 password hashes.
+   - `auth_users.neon_auth_user_id` stores the linked Supabase Auth user ID (historical column name maintained for schema stability).
+
+3. **Legacy Argon2 Password Migration Bridge:**
+   - Existing accounts with legacy Argon2 password hashes in `public.auth_users` can continue logging in seamlessly with their existing email and password.
+   - When Supabase Auth returns `invalid_credentials` (e.g. user does not yet exist in the active Supabase project or password has not yet been synchronized), the login form calls `/api/auth/migrate-legacy-login`.
+   - The migration endpoint verifies the Argon2 password hash against `public.auth_users` (supporting direct, peppered, and clean-pepper variations).
+   - Upon successful verification, the server synchronizes the account into Supabase Auth using the server-side Supabase Admin API (`createUser` or `updateUserById` with `email_confirm: true`).
+   - The linked Supabase user ID is persisted in `public.auth_users.neon_auth_user_id`.
+   - The frontend immediately signs in via Supabase Auth to establish the active browser session.
 
 ## Runtime Flow
 
-1. Users sign up or sign in through Neon Auth.
-2. The app provisions or resolves the existing internal profile/auth row.
-3. `getServerAuthSession()` returns the same application-facing shape used by authorization code:
-   - `session.user.id`
-   - `session.user.email`
-   - `session.user.role`
-   - `session.user.organizationName`
-4. API routes and Server Components continue using that internal user id for ownership, admin checks, and tenant logic.
+```
+User submits email + password
+       │
+       ▼
+1. Supabase Auth (client.signIn.email)
+       │
+       ├─► Success ──► Session cookies set ──► Redirect to /dashboard or /admin
+       │
+       └─► Error: invalid_credentials (400)
+             │
+             ▼
+2. Call /api/auth/migrate-legacy-login (POST)
+       │
+       ├─► Verify Argon2 password in public.auth_users
+       │     └─► Mismatch ──► Return 401 (Invalid email or password)
+       │
+       ├─► Synchronize user into Supabase Auth via Admin API (syncSupabaseAuthUser)
+       │     ├─► If absent: Admin API createUser (email_confirm: true)
+       │     └─► If exists: Admin API updateUserById (password + email_confirm: true)
+       │
+       ├─► Link Supabase user ID to public.auth_users (neon_auth_user_id)
+       │
+       ▼
+3. Frontend completes signIn.email with verified credentials ──► Redirect
+```
 
-## Legacy Password Migration
+## Environment Configuration
 
-Existing users who only have an app-owned `auth_users.password_hash` can keep using their previous email and password.
+### Required Production Variables
 
-On login:
+- **Supabase Project:**
+  - `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_URL`: Active Supabase project URL (e.g. `https://<project-ref>.supabase.co`).
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`: Public anonymous/publishable key for browser clients.
+  - `SUPABASE_SECRET_KEY` / `SUPABASE_SERVICE_ROLE_KEY`: Server-only service role secret key for admin synchronization and password updates. Must point to the **same** project as `NEXT_PUBLIC_SUPABASE_URL`.
 
-1. The client first tries Neon Auth.
-2. If Neon Auth rejects the credentials, `/api/auth/migrate-legacy-login` verifies the previous Argon2 password hash.
-3. If the old password is valid, the client creates the Neon Auth account with the same email and password.
-4. The normal session resolver links that Neon Auth user back to the existing internal app user by email.
+- **Neon Database:**
+  - `DATABASE_URL`: Connection string for PostgreSQL queries.
+  - `DATABASE_URL_DIRECT`: Direct unpooled connection string (used for migrations and system queries).
 
-This is intentionally just-in-time. Bulk password migration is not possible from hashes alone without an official Neon Auth hash-import API or the users' plaintext passwords.
+- **Security & Password Pepper:**
+  - `PASSWORD_PEPPER`: Secret pepper string matching the legacy Argon2 password hashing configuration.
 
-## Environment
+### Obsolete / Deprecated Variables
 
-Required:
-
-- `NEON_AUTH_BASE_URL`
-- `NEON_AUTH_COOKIE_SECRET`
-- `DATABASE_URL`
-- `DATABASE_URL_DIRECT`
-
-Obsolete:
-
-- `NEXTAUTH_SECRET`
-- `NEXTAUTH_URL`
-
-## Notes
-
-- The old Auth.js credentials route, provider, JWT callbacks, `SessionProvider`, `useSession`, `signIn`, and `signOut` usage have been removed.
-- Password reset and password change now call Neon Auth APIs.
-- The historical `login_email_otp` table remains in the schema but is no longer part of the active login flow.
-- Clerk remains installed and wrapped in layout/middleware because removing Clerk was outside this migration scope.
+- `NEON_AUTH_BASE_URL` (Obsolete - Neon Auth is disabled)
+- `NEON_AUTH_COOKIE_SECRET` (Obsolete - sessions are managed by Supabase Auth)
+- `NEXTAUTH_SECRET` / `NEXTAUTH_URL` (Obsolete - NextAuth removed)

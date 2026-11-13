@@ -10,10 +10,17 @@ export const authClient = {
     email: async ({ email, password }: { email: string; password: string }) => {
       const res = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
-        password: password.trim(),
+        password,
       });
       if (res.error) {
-        return { data: null, error: { message: res.error.message } };
+        return {
+          data: null,
+          error: {
+            message: res.error.message,
+            code: (res.error as unknown as { code?: string }).code,
+            status: res.error.status,
+          },
+        };
       }
       return {
         data: {
@@ -38,7 +45,7 @@ export const authClient = {
     }) => {
       const res = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
-        password: password.trim(),
+        password,
         options: {
           data: {
             name,
@@ -47,7 +54,14 @@ export const authClient = {
         },
       });
       if (res.error) {
-        return { data: null, error: { message: res.error.message } };
+        return {
+          data: null,
+          error: {
+            message: res.error.message,
+            code: (res.error as unknown as { code?: string }).code,
+            status: res.error.status,
+          },
+        };
       }
       return {
         data: {
