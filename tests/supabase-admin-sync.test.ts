@@ -115,5 +115,63 @@ describe("syncSupabaseAuthUser & findSupabaseUserByEmail", () => {
       });
       expect(mockCreateUser).not.toHaveBeenCalled();
     });
+
+    it("handles race condition or 422 conflict by finding existing user and updating credentials", async () => {
+      // 1. Initial listUsers finds nothing
+      mockListUsers.mockResolvedValueOnce({
+        data: { users: [] },
+        error: null,
+      });
+
+      // 2. createUser returns 422 email_exists error
+      mockCreateUser.mockResolvedValueOnce({
+        data: null,
+        error: {
+          status: 422,
+          code: "email_exists",
+          message: "A user with this email address has already been registered",
+        },
+      });
+
+      // 3. Fallback findSupabaseUserByEmail finds the existing user
+      mockListUsers.mockResolvedValueOnce({
+        data: { users: [{ id: "race-user-id", email: "conflict@example.com" }] },
+        error: null,
+      });
+
+      // 4. updateUserById updates the user successfully
+      mockUpdateUserById.mockResolvedValueOnce({
+        data: { user: { id: "race-user-id" } },
+        error: null,
+      });
+
+      const res = await syncSupabaseAuthUser({
+        email: "conflict@example.com",
+        password: "RacePassword123!",
+        name: "Race User",
+      });
+
+      expect(res.success).toBe(true);
+      expect(res.userId).toBe("race-user-id");
+      expect(mockUpdateUserById).toHaveBeenCalledWith("race-user-id", {
+        password: "RacePassword123!",
+        email_confirm: true,
+        user_metadata: { name: "Race User" },
+      });
+    });
+
+    it("returns error when admin client is not configured", async () => {
+      delete process.env.SUPABASE_SECRET_KEY;
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      delete process.env.SUPABASE_SERVICE_KEY;
+
+      const res = await syncSupabaseAuthUser({
+        email: "noadmin@example.com",
+        password: "Password123!",
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain("Supabase admin client not configured");
+    });
   });
 });

@@ -1,9 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { queryNeonOneAsSystem } from "@/lib/neon-db";
 
 let adminClient: SupabaseClient | null = null;
+let lastSupabaseUrl = "";
+let lastSupabaseKey = "";
 
 export function getSupabaseAdminClient(): SupabaseClient | null {
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    "";
   const supabaseSecretKey =
     process.env.SUPABASE_SECRET_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -14,13 +20,15 @@ export function getSupabaseAdminClient(): SupabaseClient | null {
     return null;
   }
 
-  if (!adminClient) {
+  if (!adminClient || lastSupabaseUrl !== supabaseUrl || lastSupabaseKey !== supabaseSecretKey) {
     adminClient = createClient(supabaseUrl, supabaseSecretKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
     });
+    lastSupabaseUrl = supabaseUrl;
+    lastSupabaseKey = supabaseSecretKey;
   }
 
   return adminClient;
@@ -44,6 +52,44 @@ export async function findSupabaseUserByEmail(
   email: string,
 ): Promise<{ id: string; email?: string } | null> {
   const targetEmail = email.toLowerCase().trim();
+
+  // Fast path 1: Check public.auth_users for an already linked Supabase user id
+  try {
+    const linked = await queryNeonOneAsSystem<{ neon_auth_user_id: string }>(
+      `SELECT neon_auth_user_id
+       FROM public.auth_users
+       WHERE (email_normalized = $1 OR LOWER(email) = $1)
+         AND neon_auth_user_id IS NOT NULL
+       LIMIT 1`,
+      [targetEmail],
+    );
+    if (linked?.neon_auth_user_id && typeof supabaseAdmin.auth.admin.getUserById === "function") {
+      const { data, error } = await supabaseAdmin.auth.admin.getUserById(linked.neon_auth_user_id);
+      if (!error && data?.user?.id) {
+        return { id: data.user.id, email: data.user.email };
+      }
+    }
+  } catch {
+    // Database query failed or table not found; proceed to direct auth schema / GoTrue
+  }
+
+  // Fast path 2: Direct lookup in auth.users table in Supabase Postgres schema
+  try {
+    const authUser = await queryNeonOneAsSystem<{ id: string; email: string }>(
+      `SELECT id, email
+       FROM auth.users
+       WHERE LOWER(email) = $1
+       LIMIT 1`,
+      [targetEmail],
+    );
+    if (authUser?.id) {
+      return { id: authUser.id, email: authUser.email };
+    }
+  } catch {
+    // auth.users not accessible or non-postgres environment; proceed to listUsers API
+  }
+
+  // Standard path: Paginated lookup via GoTrue Admin API listUsers
   let page = 1;
   const perPage = 100;
   while (page <= 20) {
@@ -64,7 +110,10 @@ export async function syncSupabaseAuthUser(
 ): Promise<SyncSupabaseAuthUserResult> {
   const supabaseAdmin = getSupabaseAdminClient();
   if (!supabaseAdmin) {
-    return { success: false, error: "Supabase admin client not configured." };
+    return {
+      success: false,
+      error: "Supabase admin client not configured. Missing SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.",
+    };
   }
 
   const normalizedEmail = params.email.toLowerCase().trim();
@@ -112,18 +161,27 @@ export async function syncSupabaseAuthUser(
       // Handle edge-case race condition where user was created concurrently
       const isAlready =
         createError.message?.toLowerCase().includes("already") ||
+        createError.message?.toLowerCase().includes("exists") ||
+        (createError as unknown as { code?: string }).code === "email_exists" ||
         createError.status === 422;
 
       if (isAlready) {
         const raceExisting = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
         if (raceExisting?.id) {
+          const updatePayload: {
+            password?: string;
+            email_confirm?: boolean;
+            user_metadata?: { name?: string };
+          } = {
+            email_confirm: emailConfirm,
+          };
+          if (params.password) updatePayload.password = params.password;
+          if (params.name) updatePayload.user_metadata = { name: params.name };
+
           const { data: raceUpdate, error: raceErr } =
-            await supabaseAdmin.auth.admin.updateUserById(raceExisting.id, {
-              password: params.password,
-              email_confirm: emailConfirm,
-            });
-          if (!raceErr && raceUpdate?.user?.id) {
-            return { success: true, userId: raceUpdate.user.id };
+            await supabaseAdmin.auth.admin.updateUserById(raceExisting.id, updatePayload);
+          if (!raceErr && (raceUpdate?.user?.id || raceExisting.id)) {
+            return { success: true, userId: raceUpdate?.user?.id || raceExisting.id };
           }
         }
       }
@@ -140,4 +198,5 @@ export async function syncSupabaseAuthUser(
     return { success: false, error: message };
   }
 }
+
 
