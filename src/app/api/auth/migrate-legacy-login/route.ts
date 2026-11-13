@@ -14,6 +14,7 @@ const legacyLoginMigrationBodySchema = z.object({
 export async function POST(req: Request) {
   const csrf = validateCsrfOrigin(req);
   if (!csrf.ok) {
+    logger.warn({ stage: "csrf_validation", reason: csrf.reason }, "CSRF check failed for legacy login migration");
     return NextResponse.json(
       { error: csrf.reason || "CSRF validation failed." },
       { status: 403 },
@@ -21,16 +22,26 @@ export async function POST(req: Request) {
   }
 
   const parsed = await parseJsonBody(req, legacyLoginMigrationBodySchema);
-  if (!parsed.ok) return parsed.response;
+  if (!parsed.ok) {
+    logger.warn({ stage: "body_validation" }, "Invalid request body for legacy login migration");
+    return parsed.response;
+  }
 
   const { email, password } = parsed.data;
 
+  // Stage 1: Legacy account lookup & password verification
   let user;
   try {
     user = await verifyPassword(email, password);
   } catch (err: unknown) {
     logger.error(
-      { email, err: err instanceof Error ? err.message : String(err) },
+      {
+        stage: "legacy_password_verification",
+        email,
+        dbResult: "error",
+        err: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
       "Infrastructure failure during legacy password verification",
     );
     return NextResponse.json(
@@ -40,12 +51,40 @@ export async function POST(req: Request) {
   }
 
   if (!user) {
+    logger.info(
+      {
+        stage: "legacy_password_verification",
+        email,
+        legacyAccountFound: false,
+        legacyVerificationSucceeded: false,
+      },
+      "Legacy credential verification rejected invalid credentials",
+    );
     return NextResponse.json({ error: "Invalid email or password." }, { status: 401 });
   }
 
-  // User credentials verified in auth_users.
-  // Synchronize the account into Supabase Auth directly via the server Admin API.
-  // This bypasses client-side SMTP confirmation limitations and sets email_confirm: true immediately.
+  logger.info(
+    {
+      stage: "legacy_password_verification",
+      email,
+      userId: user.user_id,
+      legacyAccountFound: true,
+      legacyVerificationSucceeded: true,
+    },
+    "Legacy account credentials verified successfully in auth_users",
+  );
+
+  // Stage 2: Supabase Auth synchronization via server Admin API
+  logger.info(
+    {
+      stage: "supabase_sync_attempt",
+      email,
+      userId: user.user_id,
+      operation: "syncSupabaseAuthUser",
+    },
+    "Initiating Supabase Auth account synchronization",
+  );
+
   let syncResult;
   try {
     syncResult = await syncSupabaseAuthUser({
@@ -56,8 +95,14 @@ export async function POST(req: Request) {
     });
   } catch (err: unknown) {
     logger.error(
-      { email, err: err instanceof Error ? err.message : String(err) },
-      "Exception during Supabase Auth synchronization",
+      {
+        stage: "supabase_sync_exception",
+        email,
+        userId: user.user_id,
+        err: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+      },
+      "Unexpected exception during Supabase Auth synchronization",
     );
     return NextResponse.json(
       { error: "Authentication service is temporarily unavailable. Please try again shortly." },
@@ -67,21 +112,56 @@ export async function POST(req: Request) {
 
   if (!syncResult.success) {
     logger.error(
-      { email, error: syncResult.error },
+      {
+        stage: "supabase_sync_failed",
+        email,
+        userId: user.user_id,
+        error: syncResult.error,
+        syncResult: "failed",
+      },
       "Failed to sync user to Supabase Auth during legacy migration",
     );
     return NextResponse.json(
-      { error: "Could not synchronize authentication credentials. Please try again or reset your password." },
+      { error: "Could not synchronize authentication credentials. Please try again shortly or contact support." },
       { status: 500 },
     );
   }
 
+  logger.info(
+    {
+      stage: "supabase_sync_complete",
+      email,
+      userId: user.user_id,
+      supabaseUserId: syncResult.userId,
+      syncResult: "success",
+    },
+    "Supabase Auth user synchronized successfully",
+  );
+
+  // Stage 3: Link Supabase Auth user ID to local auth_users record
   if (syncResult.userId) {
     try {
       await linkAuthUserToNeonAuthUser(syncResult.userId, email);
+      logger.info(
+        {
+          stage: "database_link",
+          email,
+          userId: user.user_id,
+          supabaseUserId: syncResult.userId,
+          dbResult: "linked",
+        },
+        "Linked Supabase Auth user ID to local auth_users record",
+      );
     } catch (linkError) {
       logger.warn(
-        { email, err: linkError instanceof Error ? linkError.message : String(linkError) },
+        {
+          stage: "database_link",
+          email,
+          userId: user.user_id,
+          supabaseUserId: syncResult.userId,
+          dbResult: "link_failed",
+          err: linkError instanceof Error ? linkError.message : String(linkError),
+        },
         "Could not link Supabase Auth user ID to auth_users",
       );
     }
