@@ -21,6 +21,8 @@ describe("verifyPassword & legacy password verification unit tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    delete process.env.SUPERADMIN_PASSWORD;
+    delete process.env.ADMIN_PASSWORD;
   });
 
   afterEach(() => {
