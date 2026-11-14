@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useReducedMotion, type Variants } from "framer-motion";
 
 const EASE_STANDARD: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -84,31 +84,47 @@ export function useDashboardMotion() {
 
 export function useAutoRefresh(enabled: boolean, intervalMs = DASHBOARD_REFRESH_INTERVAL_MS) {
   const [refreshTick, setRefreshTick] = useState(0);
-  const lastRefreshTimeRef = useState<{ current: number }>({ current: Date.now() })[0];
+  const lastRefreshTimeRef = useRef(0);
 
   const triggerRefresh = useCallback(() => {
+    // Never refresh when document is not visible
+    if (typeof document !== "undefined" && (document.hidden || document.visibilityState === "hidden")) {
+      return;
+    }
     const now = Date.now();
     if (now - lastRefreshTimeRef.current < 4000) return; // Prevent request thrashing
     lastRefreshTimeRef.current = now;
     setRefreshTick((prev) => prev + 1);
-  }, [lastRefreshTimeRef]);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
 
-    const intervalId = window.setInterval(triggerRefresh, intervalMs);
-    const onFocus = () => triggerRefresh();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") triggerRefresh();
+    const intervalId = window.setInterval(() => {
+      if (typeof document !== "undefined" && !document.hidden && document.visibilityState === "visible") {
+        triggerRefresh();
+      }
+    }, intervalMs);
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleActive = () => {
+      if (typeof document !== "undefined" && (document.hidden || document.visibilityState === "hidden")) {
+        return;
+      }
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        triggerRefresh();
+      }, 300);
     };
 
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("focus", handleActive);
+    document.addEventListener("visibilitychange", handleActive);
 
     return () => {
       window.clearInterval(intervalId);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      if (debounceTimer) clearTimeout(debounceTimer);
+      window.removeEventListener("focus", handleActive);
+      document.removeEventListener("visibilitychange", handleActive);
     };
   }, [enabled, intervalMs, triggerRefresh]);
 

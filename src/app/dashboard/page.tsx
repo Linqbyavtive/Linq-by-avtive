@@ -191,6 +191,8 @@ function DashboardContent() {
   const { presets, fadeUp, staggerItem, hoverLift, hoverIconNudge } = useDashboardMotion();
   const { refreshTick } = useAutoRefresh(Boolean(userId));
   const dashboardLoadKeyRef = useRef<string | null>(null);
+  const effectiveUserIdRef = useRef<string>("");
+  const hasBootstrappedRef = useRef<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -281,39 +283,37 @@ function DashboardContent() {
       }
     };
 
-    const resolveAuthedUserIdWithRetry = async () => {
+    const resolveAuthedUserId = async () => {
       if (userId) return userId;
-      for (let attempt = 0; attempt < 8; attempt += 1) {
-        try {
-          const authRes = await fetch("/api/auth/me", { cache: "no-store" });
-          const authPayload = await readResponsePayload(authRes);
-          const resolvedUserId =
-            authPayload &&
-            typeof authPayload === "object" &&
-            "data" in authPayload &&
-            authPayload.data &&
-            typeof authPayload.data === "object" &&
-            "userId" in authPayload.data &&
-            typeof authPayload.data.userId === "string"
-              ? authPayload.data.userId
-              : "";
-          if (resolvedUserId) return resolvedUserId;
-        } catch {}
-        await wait(200);
-      }
+      if (sessionUserId) return sessionUserId;
+      try {
+        const authRes = await fetch("/api/auth/me", { cache: "no-store" });
+        const authPayload = await readResponsePayload(authRes);
+        const resolvedUserId =
+          authPayload &&
+          typeof authPayload === "object" &&
+          "data" in authPayload &&
+          authPayload.data &&
+          typeof authPayload.data === "object" &&
+          "userId" in authPayload.data &&
+          typeof authPayload.data.userId === "string"
+            ? authPayload.data.userId
+            : "";
+        if (resolvedUserId) return resolvedUserId;
+      } catch {}
       return "";
     };
 
     const checkUser = async () => {
       if (isInternalUserLoading) return;
       const loadKey = `${userId}|${sessionUserId || ""}|${String(impersonateId ?? "")}|${String(onboardingIntent ?? "")}`;
-      if (dashboardLoadKeyRef.current === loadKey && refreshTick === 0) {
+      if (dashboardLoadKeyRef.current === loadKey) {
         return;
       }
       dashboardLoadKeyRef.current = loadKey;
       try {
         setBootstrapError("");
-        const resolvedUserId = await resolveAuthedUserIdWithRetry();
+        const resolvedUserId = await resolveAuthedUserId();
         if (!isMounted) return;
         
         if (!resolvedUserId) {
@@ -321,24 +321,34 @@ function DashboardContent() {
           return;
         }
 
-        // Check for admin using server-owned config only.
+        // Parallelize admin status, profile, and organization membership in one concurrent round-trip
         let isActuallyAdmin = false;
         let adminPayload: Record<string, unknown> | null = null;
-        try {
-          const adminRes = await fetch("/api/auth/admin-state", { cache: "no-store" });
-          adminPayload = await adminRes.json().catch(() => ({}));
-          isActuallyAdmin = Boolean(
-            adminRes.ok &&
+        let profileRow: { username?: string; organizationName?: string } | null = null;
+
+        const [adminRes, profileRes, memberRes] = await Promise.all([
+          fetch("/api/auth/admin-state", { cache: "no-store" }).catch(() => null),
+          fetch("/api/profile/username").catch(() => null),
+          fetch("/api/organization-members/me").catch(() => null),
+        ]);
+
+        if (!isMounted) return;
+
+        if (adminRes?.ok) {
+          try {
+            adminPayload = await adminRes.json().catch(() => ({}));
+            isActuallyAdmin = Boolean(
               adminPayload &&
-              typeof adminPayload === "object" &&
-              "data" in adminPayload &&
-              adminPayload.data &&
-              typeof adminPayload.data === "object" &&
-              "isAdmin" in adminPayload.data &&
-              Boolean(adminPayload.data.isAdmin),
-          );
-        } catch {
-          isActuallyAdmin = false;
+                typeof adminPayload === "object" &&
+                "data" in adminPayload &&
+                adminPayload.data &&
+                typeof adminPayload.data === "object" &&
+                "isAdmin" in adminPayload.data &&
+                Boolean(adminPayload.data.isAdmin),
+            );
+          } catch {
+            isActuallyAdmin = false;
+          }
         }
         
         if (isActuallyAdmin) {
@@ -362,12 +372,6 @@ function DashboardContent() {
         let userisOrgTeamMemberLocal = false;
         let userIsOrgOwnerLocal = false;
         let gateStatus: "pending" | "awaiting_owner" | null = null;
-
-        let profileRow: { username?: string; organizationName?: string } | null = null;
-        const [profileRes, memberRes] = await Promise.all([
-          fetch("/api/profile/username").catch(() => null),
-          fetch("/api/organization-members/me").catch(() => null),
-        ]);
         try {
           if (profileRes?.ok) {
             const profilePayload = await readResponsePayload(profileRes);
@@ -479,6 +483,8 @@ function DashboardContent() {
         }
         
         setUserName(effectiveName);
+        effectiveUserIdRef.current = effectiveId;
+        hasBootstrappedRef.current = true;
         if (!isActuallyAdmin && !userisOrgTeamMemberLocal && !userIsOrgOwnerLocal && (gateStatus === "pending" || gateStatus === "awaiting_owner")) {
           setIsCheckingAuth(false);
           return;
@@ -505,7 +511,17 @@ function DashboardContent() {
     checkUser();
     return () => { isMounted = false; };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- bootstrap on auth/URL gate; fetchData intentionally omitted to avoid loops
-  }, [router, impersonateId, onboardingIntent, sessionUserId, userId, refreshTick, isInternalUserLoading]);
+  }, [router, impersonateId, onboardingIntent, sessionUserId, userId, isInternalUserLoading]);
+
+  // Decoupled periodic and focus data refresh: updates event and attendee stats without re-running bootstrap
+  useEffect(() => {
+    if (refreshTick === 0 || !hasBootstrappedRef.current) return;
+    const targetId = effectiveUserIdRef.current || userId;
+    if (targetId) {
+      void fetchData(targetId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTick, userId]);
 
   const fetchData = async (targetUserId?: string, getIsMounted?: () => boolean) => {
     try {

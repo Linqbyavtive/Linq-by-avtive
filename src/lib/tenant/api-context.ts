@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getServerAuthSession } from "@/auth";
-import { getServerUserIdFromCookies } from "@/lib/auth-server";
 import { runWithTenantContextAsync, type TenantContext } from "@/lib/tenant/context";
 import { buildTenantContextForUser } from "@/lib/tenant/resolve";
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
@@ -35,10 +34,10 @@ export async function resolveTenantContextFromCookies(
   cookieStore: ReadonlyRequestCookies,
   options?: { allowAdminBypass?: boolean },
 ): Promise<TenantContext | null> {
-  const userId = await getServerUserIdFromCookies(cookieStore);
+  const session = await getServerAuthSession();
+  const userId = String(session?.user?.id || "").trim();
   if (!userId) return null;
 
-  const session = await getServerAuthSession();
   const bypassRls = Boolean(options?.allowAdminBypass && isSessionAdmin(session));
   return buildTenantContextForUser(userId, { bypassRls });
 }

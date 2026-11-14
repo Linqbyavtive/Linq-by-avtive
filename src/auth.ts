@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient as createSupabaseServerClient } from "@/utils/supabase/server";
 import {
   getAuthSessionPayloadByUserId,
@@ -17,7 +18,7 @@ export type AppAuthSession = {
   };
 };
 
-export async function getServerAuthSession(): Promise<AppAuthSession | null> {
+export const getServerAuthSession = cache(async (): Promise<AppAuthSession | null> => {
   try {
     const supabase = await createSupabaseServerClient();
     const {
@@ -84,7 +85,7 @@ export async function getServerAuthSession(): Promise<AppAuthSession | null> {
   } catch {
     return null;
   }
-}
+});
 
 // Backwards compatibility export for any legacy references
 export const neonAuth = {

@@ -41,7 +41,6 @@ function getSecretKey(): Uint8Array {
   const secret =
     process.env.NEON_AUTH_COOKIE_SECRET ||
     process.env.SECURITY_HMAC_KEY ||
-    process.env.CLERK_SECRET_KEY ||
     "linq-linkedin-secure-encryption-secret-key-32";
   return new TextEncoder().encode(secret.padEnd(32, "!"));
 }

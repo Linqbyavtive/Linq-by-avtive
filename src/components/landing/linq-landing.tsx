@@ -18,14 +18,33 @@ import {
   Users,
   X,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import CrowdCanvas from "@/components/ui/skiper39";
-import { DiscRevealList, type DiscRevealItem } from "@/components/ui/disc-reveal-list";
+import type { DiscRevealItem } from "@/components/ui/disc-reveal-list";
 import AetherFlowBackground from "@/components/ui/aether-flow-background";
 import { motion, AnimatePresence } from "framer-motion";
 import { HeroSection4Animation, heroItemVariants } from "@/components/ui/hero-section-4";
-import { HowItWorks, type StepItem } from "@/components/ui/how-it-works";
-import { AnimatedFeatureCard } from "@/components/ui/feature-card-1";
-import StickerSlapFooter from "@/components/ui/sticker-slap-footer";
+import type { StepItem } from "@/components/ui/how-it-works";
+
+const DiscRevealList = dynamic(
+  () => import("@/components/ui/disc-reveal-list").then((m) => m.DiscRevealList),
+  { ssr: true }
+);
+
+const HowItWorks = dynamic(
+  () => import("@/components/ui/how-it-works").then((m) => m.HowItWorks),
+  { ssr: true }
+);
+
+const AnimatedFeatureCard = dynamic(
+  () => import("@/components/ui/feature-card-1").then((m) => m.AnimatedFeatureCard),
+  { ssr: true }
+);
+
+const StickerSlapFooter = dynamic(
+  () => import("@/components/ui/sticker-slap-footer").then((m) => m.default),
+  { ssr: true }
+);
 import {
   OneLinkIllustration,
   ScannableCardIllustration,

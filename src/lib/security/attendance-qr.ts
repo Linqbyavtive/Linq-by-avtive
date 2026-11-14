@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 
 const ATTENDANCE_SECRET =
   process.env.ATTENDANCE_SECRET ||
-  process.env.CLERK_SECRET_KEY ||
+  process.env.SECURITY_HMAC_KEY ||
   process.env.NEON_AUTH_SECRET ||
   "avtive-secure-attendance-qr-secret-key-2026";
 

@@ -55,7 +55,7 @@ class PgClientAdapter implements UniversalSqlClient {
     this.pool = new Pool({
       connectionString: cleanConnStr,
       ssl: { rejectUnauthorized: false },
-      max: 10,
+      max: Number(process.env.DB_POOL_MAX || (process.env.VERCEL ? 2 : 10)),
     });
   }
 

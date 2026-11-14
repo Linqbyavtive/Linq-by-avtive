@@ -2,6 +2,7 @@
 
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client";
 import { useEffect, useState } from "react";
+import { clearInternalUserIdCache } from "./use-internal-user-id";
 
 export const supabase = createSupabaseBrowserClient();
 
@@ -73,6 +74,7 @@ export const authClient = {
     },
   },
   signOut: async () => {
+    clearInternalUserIdCache();
     const res = await supabase.auth.signOut();
     return { error: res.error ? { message: res.error.message } : null };
   },
@@ -107,6 +109,7 @@ export const authClient = {
             },
           });
         } else {
+          clearInternalUserIdCache();
           setSession(null);
         }
         setIsPending(false);

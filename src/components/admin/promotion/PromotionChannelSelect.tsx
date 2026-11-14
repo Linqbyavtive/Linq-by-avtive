@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
@@ -25,12 +26,35 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PromotionChannel, PromotionTemplate, ChannelEditorState, PromotionTheme } from "./types";
 import { DEFAULT_TEMPLATES } from "./defaultTemplates";
-import { NewsletterLivePreview } from "./NewsletterLivePreview";
-import { LinkedInLivePreview } from "./LinkedInLivePreview";
-import { WhatsAppLivePreview } from "./WhatsAppLivePreview";
-import { SendConfirmDialog } from "./SendConfirmDialog";
-import { TeamAccessDialog } from "./TeamAccessDialog";
-import { SpreadsheetImportModal } from "./SpreadsheetImportModal";
+const NewsletterLivePreview = dynamic(
+  () => import("./NewsletterLivePreview").then((m) => m.NewsletterLivePreview),
+  { ssr: false }
+);
+
+const LinkedInLivePreview = dynamic(
+  () => import("./LinkedInLivePreview").then((m) => m.LinkedInLivePreview),
+  { ssr: false }
+);
+
+const WhatsAppLivePreview = dynamic(
+  () => import("./WhatsAppLivePreview").then((m) => m.WhatsAppLivePreview),
+  { ssr: false }
+);
+
+const SendConfirmDialog = dynamic(
+  () => import("./SendConfirmDialog").then((m) => m.SendConfirmDialog),
+  { ssr: false }
+);
+
+const TeamAccessDialog = dynamic(
+  () => import("./TeamAccessDialog").then((m) => m.TeamAccessDialog),
+  { ssr: false }
+);
+
+const SpreadsheetImportModal = dynamic(
+  () => import("./SpreadsheetImportModal").then((m) => m.SpreadsheetImportModal),
+  { ssr: false }
+);
 import { parsePromotionImportFile, ImportResult } from "./importUtils";
 
 function LinkedInIcon({ className }: { className?: string }) {

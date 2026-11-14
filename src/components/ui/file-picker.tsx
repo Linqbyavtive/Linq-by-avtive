@@ -1,14 +1,23 @@
 "use client";
 
 import { useEffect, useState, useId } from "react";
-import { ImageCropperModal } from "../ImageCropperModal";
-import { FreeformImageCropModal } from "../FreeformImageCropModal";
+import dynamic from "next/dynamic";
 import { Label } from "./label";
 import { cn } from "@/lib/utils";
 import { isAcceptedImageFile } from "@/lib/utils/crop-image";
 import { isValidImageDataUrl } from "@/lib/utils/image-data-url";
 
 import { X } from "lucide-react";
+
+const ImageCropperModal = dynamic(
+  () => import("../ImageCropperModal").then((m) => m.ImageCropperModal),
+  { ssr: false }
+);
+
+const FreeformImageCropModal = dynamic(
+  () => import("../FreeformImageCropModal").then((m) => m.FreeformImageCropModal),
+  { ssr: false }
+);
 
 const MAX_PHOTO_BYTES = 20 * 1024 * 1024;
 

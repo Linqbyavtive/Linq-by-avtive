@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, use, useMemo, useCallback, Suspense, useRef, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
@@ -27,7 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea as ShadTextarea } from "@/components/ui/textarea";
-import { CardTypographyPicker } from "@/components/CardTypographyPicker";
 import { isDeleteConfirmMatch, normalizeDeleteConfirmText } from "@/lib/ui/delete-confirm";
 import { buildLinkedInFeedShareUrl } from "@/lib/share/linkedin-card-share";
 
@@ -62,7 +62,6 @@ import {
   QrCode,
   Megaphone,
 } from "lucide-react";
-import { QrAttendanceScannerModal } from "@/components/QrAttendanceScannerModal";
 
 import { CardData, EventData } from "@/types/card";
 import { toast } from "sonner";
@@ -75,7 +74,6 @@ import {
   useOrgRegistrationStream,
   type RegistrationRequestSummary,
 } from "@/lib/ui/useRegistrationRealtime";
-import { EventSponsorsForm } from "@/components/EventSponsorsForm";
 import { parseEventSponsors, resolveSponsorRowsToEntries, type SponsorFormRow } from "@/lib/sponsors";
 import { isValidUuid } from "@/lib/validation/uuid";
 import { CAMPAIGN_LOGO_CROP_ASPECT } from "@/lib/ui/crop-presets";
@@ -87,9 +85,40 @@ import {
   dashboardPreviewBannerInner,
   dashboardModalBackdrop,
 } from "@/lib/ui/dashboard-shell";
-import { CardPreview, isValidCssColor } from "@/components/CardPreview";
-import { BrandingDualPreview } from "@/components/BrandingDualPreview";
-import { CustomColorPicker } from "@/components/CustomColorPicker";
+import { isValidCssColor } from "@/lib/ui/color-validation";
+
+const QrAttendanceScannerModal = dynamic(
+  () => import("@/components/QrAttendanceScannerModal").then((m) => m.QrAttendanceScannerModal),
+  { ssr: false }
+);
+
+const EventSponsorsForm = dynamic(
+  () => import("@/components/EventSponsorsForm").then((m) => m.EventSponsorsForm),
+  { ssr: false }
+);
+
+const CardPreview = dynamic(
+  () => import("@/components/CardPreview").then((m) => m.CardPreview),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 flex items-center justify-center text-sm text-muted-foreground animate-pulse">Loading preview...</div>,
+  }
+);
+
+const BrandingDualPreview = dynamic(
+  () => import("@/components/BrandingDualPreview").then((m) => m.BrandingDualPreview),
+  { ssr: false }
+);
+
+const CustomColorPicker = dynamic(
+  () => import("@/components/CustomColorPicker").then((m) => m.CustomColorPicker),
+  { ssr: false }
+);
+
+const CardTypographyPicker = dynamic(
+  () => import("@/components/CardTypographyPicker").then((m) => m.CardTypographyPicker),
+  { ssr: false }
+);
 import {
   type RegistrationFieldDefinition,
   type RegistrationFormConfig,
@@ -363,7 +392,7 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
       if (isMounted) setIsLoading(false);
     }, 6000);
 
-    const resolveAuthedUserIdWithRetry = async (): Promise<string> => {
+    const resolveAuthedUserId = async (): Promise<string> => {
       if (userId) return userId;
       if (sessionUserId) return sessionUserId;
       try {
@@ -386,7 +415,7 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
 
     const checkUser = async () => {
       if (!isMounted) return;
-      const effectiveViewerId = userId || (await resolveAuthedUserIdWithRetry());
+      const effectiveViewerId = userId || (await resolveAuthedUserId());
       if (!isMounted) return;
       if (!effectiveViewerId) {
         setIsLoading(false);
@@ -419,9 +448,18 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
         setIsLoading(true);
       }
       try {
-        const eventRes = await fetch(
-          `/api/events/${id}${isPreviewMode && impersonateId ? `?impersonate=${encodeURIComponent(impersonateId)}` : ""}`,
-        );
+        // Stage 1 & 2: Fetch event metadata, branding, membership, and attendees concurrently
+        const [eventRes, brandingRes, memberRes, attendeeRes] = await Promise.all([
+          fetch(
+            `/api/events/${id}${isPreviewMode && impersonateId ? `?impersonate=${encodeURIComponent(impersonateId)}` : ""}`,
+          ),
+          fetch(`/api/events/${id}/branding`).catch(() => null),
+          fetch("/api/organization-members/me").catch(() => null),
+          fetch(
+            `/api/events/${id}/attendees${isPreviewMode && impersonateId ? `?impersonate=${encodeURIComponent(impersonateId)}` : ""}`,
+          ).catch(() => null),
+        ]);
+
         const eventPayload = await readResponsePayload(eventRes);
         if (eventRes.status === 404) {
           if (!silentPoll) {
@@ -446,18 +484,19 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
         }
         if (!isMounted) return;
 
-        try {
-          const brandingRes = await fetch(`/api/events/${id}/branding`);
-          const brandingPayload = await readResponsePayload(brandingRes);
-          const brandingData = asPayloadRecord(brandingPayload);
-          if (brandingRes.ok && brandingData && isMounted) {
-            setOrganizationBranding({
-              name: String(brandingData.organizationName || ""),
-              logoUrl: String(brandingData.organizationLogoUrl || ""),
-            });
+        if (brandingRes?.ok) {
+          try {
+            const brandingPayload = await readResponsePayload(brandingRes);
+            const brandingData = asPayloadRecord(brandingPayload);
+            if (brandingData && isMounted) {
+              setOrganizationBranding({
+                name: String(brandingData.organizationName || ""),
+                logoUrl: String(brandingData.organizationLogoUrl || ""),
+              });
+            }
+          } catch {
+            // Keep fallback branding values
           }
-        } catch {
-          // Keep fallback branding values when branding endpoint fails.
         }
 
         setEventData({
@@ -502,35 +541,32 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
           router.push(`/dashboard/events/${id}/promotions`);
         }
 
-        const [memberResult, attendeeRes] = await Promise.all([
-          fetch("/api/organization-members/me")
-            .then(async (res) => {
-              const payload = await readResponsePayload(res);
-              const ownerId = res.ok ? String((payload as { data?: { org_owner_user_id?: string } })?.data?.org_owner_user_id || "") : "";
-              return Boolean(ownerId && ownerId === String(eventRecord.user_id || ""));
-            })
-            .catch(() => false),
-          fetch(
-            `/api/events/${id}/attendees${isPreviewMode && impersonateId ? `?impersonate=${encodeURIComponent(impersonateId)}` : ""}`,
-          ),
-        ]);
+        let memberResult = false;
+        if (memberRes?.ok) {
+          try {
+            const memberPayload = await readResponsePayload(memberRes);
+            const ownerId = String((memberPayload as { data?: { org_owner_user_id?: string } })?.data?.org_owner_user_id || "");
+            memberResult = Boolean(ownerId && ownerId === String(eventRecord.user_id || ""));
+          } catch {}
+        }
         setIsOrgAdminReviewer(memberResult);
 
         let attendeeRecords: Array<Record<string, unknown>> = [];
-        if (!attendeeRes.ok) {
-          const errPayload = await readResponsePayload(attendeeRes);
-          const errMsg = getPayloadError(errPayload, attendeeRes.statusText);
-          if (attendeeRes.status === 403) {
-            // Team members without card-read grants can still access event shell.
-            attendeeRecords = [];
+        if (attendeeRes) {
+          if (!attendeeRes.ok) {
+            const errPayload = await readResponsePayload(attendeeRes);
+            const errMsg = getPayloadError(errPayload, attendeeRes.statusText);
+            if (attendeeRes.status === 403) {
+              attendeeRecords = [];
+            } else {
+              throw new Error(errMsg || "Failed to fetch decrypted attendees");
+            }
           } else {
-            throw new Error(errMsg || "Failed to fetch decrypted attendees");
+            const attendeePayload = await readResponsePayload(attendeeRes);
+            attendeeRecords = Array.isArray((attendeePayload as { data?: unknown[] })?.data)
+              ? ((attendeePayload as { data: unknown[] }).data as Array<Record<string, unknown>>)
+              : [];
           }
-        } else {
-          const attendeePayload = await readResponsePayload(attendeeRes);
-          attendeeRecords = Array.isArray((attendeePayload as { data?: unknown[] })?.data)
-            ? ((attendeePayload as { data: unknown[] }).data as Array<Record<string, unknown>>)
-            : [];
         }
         if (!isMounted) return;
 
@@ -579,33 +615,43 @@ function EventContent({ params }: { params: Promise<{ id: string }> }) {
             : [],
         );
 
+        // Essential event view is now ready: unblock loading state
+        if (!silentPoll) {
+          setIsLoading(false);
+        }
+
+        // Stage 3: Load secondary moderation queues in background
         if (eventRecord.user_id === viewerId || memberResult) {
-          try {
-            const [reqRes, registrationRes] = await Promise.all([
-              fetch(`/api/access-requests?eventId=${id}`),
-              fetch(`/api/events/${id}/registrations`),
-            ]);
-            const reqPayload = await readResponsePayload(reqRes);
-            if (reqRes.ok && (reqPayload as { data?: { requests?: unknown } })?.data?.requests) {
-              setPendingAccessRequests((reqPayload as { data: { requests: PendingAccessRequest[] } }).data.requests);
+          void (async () => {
+            try {
+              const [reqRes, registrationRes] = await Promise.all([
+                fetch(`/api/access-requests?eventId=${id}`),
+                fetch(`/api/events/${id}/registrations`),
+              ]);
+              if (!isMounted) return;
+              if (reqRes?.ok) {
+                const reqPayload = await readResponsePayload(reqRes);
+                if ((reqPayload as { data?: { requests?: unknown } })?.data?.requests) {
+                  setPendingAccessRequests((reqPayload as { data: { requests: PendingAccessRequest[] } }).data.requests);
+                }
+              }
+              if (registrationRes?.ok) {
+                const registrationPayload = await readResponsePayload(registrationRes);
+                if ((registrationPayload as { data?: { requests?: unknown } })?.data?.requests) {
+                  const regData = registrationPayload as {
+                    data: { requests: PendingRegistrationRequest[] };
+                    pagination?: { total?: number };
+                  };
+                  setPendingRegistrations(regData.data.requests);
+                  setPendingRegistrationCount(
+                    Number(regData.pagination?.total ?? regData.data.requests.length),
+                  );
+                }
+              }
+            } catch (err) {
+              logger.error({ err }, "Could not load moderation queues");
             }
-            const registrationPayload = await readResponsePayload(registrationRes);
-            if (registrationRes.ok && (registrationPayload as { data?: { requests?: unknown } })?.data?.requests) {
-              const regData = registrationPayload as {
-                data: { requests: PendingRegistrationRequest[] };
-                pagination?: { total?: number };
-              };
-              setPendingRegistrations(regData.data.requests);
-              setPendingRegistrationCount(
-                Number(regData.pagination?.total ?? regData.data.requests.length),
-              );
-            } else {
-              setPendingRegistrations([]);
-              setPendingRegistrationCount(0);
-            }
-          } catch (err) {
-            logger.error({ err }, "Could not load moderation queues");
-          }
+          })();
         } else {
           setPendingAccessRequests([]);
           setPendingRegistrations([]);

@@ -41,6 +41,8 @@ export function AetherFlowBackground({
 
     let animationFrameId: number;
     let disposed = false;
+    let isIntersecting = true;
+    let observer: IntersectionObserver | null = null;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let width = 0;
@@ -219,7 +221,7 @@ export function AetherFlowBackground({
         }
       }
 
-      if (!reduceMotion && !disposed) {
+      if (!reduceMotion && !disposed && isIntersecting && !document.hidden) {
         animationFrameId = requestAnimationFrame(render);
       }
     };
@@ -231,6 +233,32 @@ export function AetherFlowBackground({
     });
     resizeObserver.observe(container);
 
+    if (typeof IntersectionObserver !== "undefined") {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          const inView = Boolean(entry && entry.isIntersecting);
+          isIntersecting = inView;
+          if (inView && !reduceMotion && !disposed && !document.hidden) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = requestAnimationFrame(render);
+          }
+        },
+        { threshold: 0.05 },
+      );
+      observer.observe(container);
+    }
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(animationFrameId);
+      } else if (isIntersecting && !reduceMotion && !disposed) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", handlePointerLeave);
 
@@ -241,7 +269,9 @@ export function AetherFlowBackground({
     return () => {
       disposed = true;
       if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      observer?.disconnect();
       resizeObserver.disconnect();
+      document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("pointermove", handlePointerMove);
       document.documentElement.removeEventListener("pointerleave", handlePointerLeave);
     };

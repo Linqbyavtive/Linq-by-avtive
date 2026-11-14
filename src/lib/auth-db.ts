@@ -305,40 +305,6 @@ export async function verifyPassword(email: string, password: string): Promise<A
   return null;
 }
 
-export async function getInternalUserIdByClerkUserId(clerkUserId: string): Promise<string | null> {
-  await ensureAuthSchema();
-  const row = await queryNeonOneAsSystem<{ user_id: string }>(
-    `SELECT user_id FROM public.auth_users WHERE clerk_user_id = $1 LIMIT 1`,
-    [clerkUserId],
-  );
-  return row?.user_id ?? null;
-}
-
-/**
- * Resolve Clerk subject → existing auth_users.user_id by clerk_user_id or verified primary email.
- * Links clerk_user_id on first successful email match.
- */
-export async function linkAuthUserToClerkUser(clerkUserId: string, email: string): Promise<string | null> {
-  await ensureAuthSchema();
-  const normalizedEmail = normalizeAuthEmail(email);
-  if (!normalizedEmail) return null;
-
-  const already = await getInternalUserIdByClerkUserId(clerkUserId);
-  if (already) return already;
-
-  const byEmail = await queryNeonOneAsSystem<{ user_id: string }>(
-    `SELECT user_id FROM public.auth_users WHERE email_normalized = $1 OR LOWER(email) = $1 LIMIT 1`,
-    [normalizedEmail],
-  );
-  if (!byEmail?.user_id) return null;
-
-  await queryNeonAsSystem(
-    `UPDATE public.auth_users SET clerk_user_id = $1, updated_at = now() WHERE user_id = $2`,
-    [clerkUserId, byEmail.user_id],
-  );
-  return byEmail.user_id;
-}
-
 export async function getAuthSessionPayloadByUserId(userId: string): Promise<{
   userId: string;
   email: string;
