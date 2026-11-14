@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { queryNeonOneAsSystem } from "@/lib/neon-db";
+import { logger } from "@/lib/logger-server";
 
 let adminClient: SupabaseClient | null = null;
 let lastSupabaseUrl = "";
@@ -7,8 +8,8 @@ let lastSupabaseKey = "";
 
 export function getSupabaseAdminClient(): SupabaseClient | null {
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
     process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
     "";
   const supabaseSecretKey =
     process.env.SUPABASE_SECRET_KEY ||
@@ -173,6 +174,10 @@ export async function syncSupabaseAuthUser(
 ): Promise<SyncSupabaseAuthUserResult> {
   const supabaseAdmin = getSupabaseAdminClient();
   if (!supabaseAdmin) {
+    logger.error(
+      { email: params.email, stage: "supabase_admin_client_missing" },
+      "Supabase admin client not configured. Missing SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.",
+    );
     return {
       success: false,
       error: "Supabase admin client not configured. Missing SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY.",
@@ -189,6 +194,10 @@ export async function syncSupabaseAuthUser(
       existing = await findSupabaseUserByEmail(supabaseAdmin, normalizedEmail);
     } catch (lookupErr) {
       const errMsg = lookupErr instanceof Error ? lookupErr.message : String(lookupErr);
+      logger.error(
+        { email: normalizedEmail, stage: "supabase_user_lookup_failed", error: errMsg },
+        "Supabase user lookup failed",
+      );
       return {
         success: false,
         error: `Supabase user lookup failed: ${errMsg}`,
@@ -196,6 +205,10 @@ export async function syncSupabaseAuthUser(
     }
 
     if (existing?.id) {
+      logger.info(
+        { email: normalizedEmail, stage: "supabase_user_found", userId: existing.id, hasPassword: Boolean(params.password) },
+        "Existing Supabase user found for synchronization",
+      );
       // User exists: update password and confirm email, preserving existing user_metadata and app_metadata
       const mergedUserMetadata: Record<string, unknown> = {
         ...(existing.user_metadata || {}),
@@ -227,6 +240,10 @@ export async function syncSupabaseAuthUser(
         await supabaseAdmin.auth.admin.updateUserById(existing.id, updatePayload);
 
       if (updateError) {
+        logger.error(
+          { email: normalizedEmail, stage: "supabase_update_failed", userId: existing.id, error: updateError.message },
+          "Supabase updateUserById failed",
+        );
         return { success: false, error: updateError.message };
       }
 
@@ -236,17 +253,31 @@ export async function syncSupabaseAuthUser(
         "email_confirmed_at" in updateData.user &&
         !updateData.user.email_confirmed_at
       ) {
+        logger.error(
+          { email: normalizedEmail, stage: "supabase_email_confirm_not_set", userId: existing.id },
+          "Supabase Admin API updated user but email confirmation timestamp was not set",
+        );
         return {
           success: false,
           error: "Supabase Admin API updated user but email confirmation timestamp was not set.",
         };
       }
 
+      logger.info(
+        { email: normalizedEmail, stage: "supabase_update_complete", userId: updateData?.user?.id || existing.id, emailConfirmed: Boolean(updateData?.user?.email_confirmed_at) },
+        "Supabase user updated and confirmed successfully",
+      );
+
       return {
         success: true,
         userId: updateData?.user?.id || existing.id,
       };
     }
+
+    logger.info(
+      { email: normalizedEmail, stage: "supabase_create_attempt", hasPassword: Boolean(params.password) },
+      "Creating new Supabase user with confirmed email",
+    );
 
     // 2. User is confirmed absent: create with confirmed email (bypasses SMTP)
     const { data: createData, error: createError } =
@@ -323,6 +354,10 @@ export async function syncSupabaseAuthUser(
         }
       }
 
+      logger.error(
+        { email: normalizedEmail, stage: "supabase_create_failed", error: createError.message },
+        "Supabase createUser failed",
+      );
       return { success: false, error: createError.message };
     }
 
@@ -337,6 +372,11 @@ export async function syncSupabaseAuthUser(
         error: "Supabase Admin API created user but email confirmation timestamp was not set.",
       };
     }
+
+    logger.info(
+      { email: normalizedEmail, stage: "supabase_create_complete", userId: createData?.user?.id, emailConfirmed: Boolean(createData?.user?.email_confirmed_at) },
+      "New Supabase user created and confirmed successfully",
+    );
 
     return {
       success: true,

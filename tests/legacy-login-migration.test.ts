@@ -4,6 +4,7 @@ const mockVerifyPassword = vi.fn();
 const mockLinkAuthUserToNeonAuthUser = vi.fn();
 const mockValidateCsrfOrigin = vi.fn();
 const mockSyncSupabaseAuthUser = vi.fn();
+const mockGetSupabaseProjectHostDiagnostics = vi.fn();
 
 vi.mock("@/lib/auth-db", () => ({
   verifyPassword: (...args: unknown[]) => mockVerifyPassword(...args),
@@ -16,6 +17,7 @@ vi.mock("@/lib/security/csrf", () => ({
 
 vi.mock("@/utils/supabase/admin", () => ({
   syncSupabaseAuthUser: (...args: unknown[]) => mockSyncSupabaseAuthUser(...args),
+  getSupabaseProjectHostDiagnostics: (...args: unknown[]) => mockGetSupabaseProjectHostDiagnostics(...args),
 }));
 
 import { POST } from "@/app/api/auth/migrate-legacy-login/route";
@@ -27,6 +29,11 @@ describe("POST /api/auth/migrate-legacy-login", () => {
     mockVerifyPassword.mockResolvedValue(null);
     mockLinkAuthUserToNeonAuthUser.mockResolvedValue("user-123");
     mockSyncSupabaseAuthUser.mockResolvedValue({ success: true, userId: "sb-uid-123" });
+    mockGetSupabaseProjectHostDiagnostics.mockReturnValue({
+      publicHost: "rolhwjcnkkrcxtyqicoj.supabase.co",
+      serverHost: "rolhwjcnkkrcxtyqicoj.supabase.co",
+      isConsistent: true,
+    });
   });
 
   it("rejects when CSRF validation fails", async () => {
@@ -196,5 +203,31 @@ describe("POST /api/auth/migrate-legacy-login", () => {
       name: "spacesuser",
       emailConfirm: true,
     });
+  });
+
+  it("returns 500 when Supabase project hosts are mismatched between public and server configuration", async () => {
+    mockVerifyPassword.mockResolvedValueOnce({
+      user_id: "user-123",
+      email: "user@example.com",
+      username: "alice",
+    });
+
+    mockGetSupabaseProjectHostDiagnostics.mockReturnValueOnce({
+      publicHost: "baprchzvczbbeowzfrga.supabase.co",
+      serverHost: "rolhwjcnkkrcxtyqicoj.supabase.co",
+      isConsistent: false,
+    });
+
+    const req = new Request("http://localhost:3000/api/auth/migrate-legacy-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "user@example.com", password: "ValidPassword123!" }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toContain("Authentication service configuration error");
+    expect(mockSyncSupabaseAuthUser).not.toHaveBeenCalled();
   });
 });

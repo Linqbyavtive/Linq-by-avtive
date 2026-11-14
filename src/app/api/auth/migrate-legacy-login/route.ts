@@ -3,7 +3,7 @@ import { z } from "zod";
 import { verifyPassword, linkAuthUserToNeonAuthUser } from "@/lib/auth-db";
 import { parseJsonBody } from "@/lib/middlewares/validateRequest";
 import { validateCsrfOrigin } from "@/lib/security/csrf";
-import { syncSupabaseAuthUser } from "@/utils/supabase/admin";
+import { syncSupabaseAuthUser, getSupabaseProjectHostDiagnostics } from "@/utils/supabase/admin";
 import { logger } from "@/lib/logger-server";
 
 const legacyLoginMigrationBodySchema = z.object({
@@ -75,6 +75,34 @@ export async function POST(req: Request) {
   );
 
   // Stage 2: Supabase Auth synchronization via server Admin API
+  const hostDiagnostics = getSupabaseProjectHostDiagnostics();
+  logger.info(
+    {
+      stage: "supabase_host_diagnostics",
+      email,
+      publicHost: hostDiagnostics.publicHost,
+      serverHost: hostDiagnostics.serverHost,
+      isConsistent: hostDiagnostics.isConsistent,
+    },
+    "Supabase project host diagnostics for legacy migration",
+  );
+
+  if (!hostDiagnostics.isConsistent) {
+    logger.error(
+      {
+        stage: "supabase_host_mismatch",
+        email,
+        publicHost: hostDiagnostics.publicHost,
+        serverHost: hostDiagnostics.serverHost,
+      },
+      "Supabase project URL mismatch detected between public and server configuration",
+    );
+    return NextResponse.json(
+      { error: "Authentication service configuration error. Please contact support." },
+      { status: 500 },
+    );
+  }
+
   logger.info(
     {
       stage: "supabase_sync_attempt",

@@ -190,30 +190,40 @@ async function runBootstrapSuperAdmin(): Promise<void> {
     // Supabase Auth synchronization:
     // Ensure the admin account exists in Supabase Auth, is pre-confirmed (email_confirm: true),
     // has role: "admin" in app_metadata, and links neon_auth_user_id in public.auth_users.
-    try {
-      const syncResult = await syncSupabaseAuthUser({
-        email,
-        password: pwd || undefined,
-        name: username,
-        role: "admin",
-        emailConfirm: true,
-      });
-      if (syncResult?.success && syncResult?.userId) {
-        await queryNeonAsSystem(
-          `UPDATE public.auth_users
-           SET neon_auth_user_id = $1, updated_at = now()
-           WHERE user_id = $2`,
-          [syncResult.userId, userId],
-        );
-      }
-    } catch (syncErr) {
-      logger.warn(
+    // For an existing user with an established password_hash, do NOT pass password from env
+    // to avoid silently overwriting their Supabase password with an environment variable placeholder.
+    // Password synchronization for existing accounts is handled via legacy login migration.
+    const isNewAccountOrMissingHash = !existingAuth || !existingAuth.password_hash;
+    const syncPassword = isNewAccountOrMissingHash ? (pwd || undefined) : undefined;
+
+    const syncResult = await syncSupabaseAuthUser({
+      email,
+      password: syncPassword,
+      name: username,
+      role: "admin",
+      emailConfirm: true,
+    });
+
+    if (!syncResult?.success) {
+      logger.error(
         {
           email,
-          err: syncErr instanceof Error ? syncErr.message : String(syncErr),
+          error: syncResult?.error,
           stage: "bootstrap_supabase_sync",
         },
-        "Could not synchronize admin user to Supabase Auth during bootstrap",
+        "Supabase Auth synchronization failed during bootstrap",
+      );
+      throw new AuthInfrastructureError(
+        `Failed to synchronize admin user to Supabase Auth during bootstrap: ${syncResult?.error || "Unknown error"}`,
+      );
+    }
+
+    if (syncResult.userId) {
+      await queryNeonAsSystem(
+        `UPDATE public.auth_users
+         SET neon_auth_user_id = $1, updated_at = now()
+         WHERE user_id = $2`,
+        [syncResult.userId, userId],
       );
     }
   }

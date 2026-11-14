@@ -32,6 +32,9 @@ describe("Super Admin & Authoritative Admin Resolution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    delete process.env.ADMIN_EMAIL;
+    delete process.env.ADMIN_EMAILS;
+    delete process.env.SUPERADMIN_USERNAME;
     resetBootstrapSuperAdminStateForTesting();
   });
 
@@ -157,6 +160,43 @@ describe("Super Admin & Authoritative Admin Resolution", () => {
         String(c[0]).includes("SET password_hash"),
       );
       expect(updateHashCalls).toHaveLength(0);
+
+      // Verify that syncSupabaseAuthUser does NOT receive password from env, preventing silent password overwrites
+      expect(mockSyncSupabaseAuthUser).toHaveBeenCalledWith({
+        email: "super@example.com",
+        password: undefined,
+        name: "super",
+        role: "admin",
+        emailConfirm: true,
+      });
+    });
+
+    it("throws AuthInfrastructureError and does not permanently cache failure when Supabase synchronization fails", async () => {
+      process.env.SUPERADMIN_EMAIL = "super@example.com";
+      process.env.SUPERADMIN_PASSWORD = "Password123!";
+
+      mockQueryNeonOneAsSystem
+        .mockResolvedValueOnce({ user_id: "uid", password_hash: "hash", neon_auth_user_id: null })
+        .mockResolvedValueOnce(null);
+      mockSyncSupabaseAuthUser.mockResolvedValueOnce({
+        success: false,
+        error: "Supabase service unavailable 503",
+      });
+
+      await expect(ensureBootstrapSuperAdmin()).rejects.toThrow(
+        "Failed to synchronize admin user to Supabase Auth during bootstrap",
+      );
+
+      // Verify retry succeeds when Supabase becomes available
+      mockQueryNeonOneAsSystem
+        .mockResolvedValueOnce({ user_id: "uid", password_hash: "hash", neon_auth_user_id: null })
+        .mockResolvedValueOnce(null);
+      mockSyncSupabaseAuthUser.mockResolvedValueOnce({
+        success: true,
+        userId: "sb-uid",
+      });
+
+      await expect(ensureBootstrapSuperAdmin()).resolves.toBeUndefined();
     });
 
     it("safely retries on transient database failure and does not cache failure", async () => {
