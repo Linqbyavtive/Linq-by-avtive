@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { queryNeon, queryNeonOne } from "@/lib/neon-db";
+import { queryNeon } from "@/lib/neon-db";
 import { getServerUserIdFromCookies } from "@/lib/auth-server";
-import { getAdminUserEmailById } from "@/lib/admin";
+import { getServerAuthSession } from "@/auth";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const ownerId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const ownerId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!ownerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const requests = await queryNeon<{
@@ -18,39 +19,30 @@ export async function GET() {
       note: string | null;
       status: string;
       created_at: string;
+      requester_email: string;
+      event_name: string;
     }>(
-      `SELECT id, event_id, requester_user_id, requested_action, note, status, created_at
-       FROM public.access_requests
-       WHERE owner_user_id = $1
-         AND status = 'pending'
-       ORDER BY created_at DESC
+      `SELECT 
+         ar.id, 
+         ar.event_id, 
+         ar.requester_user_id, 
+         ar.requested_action, 
+         ar.note, 
+         ar.status, 
+         ar.created_at,
+         COALESCE(au.email, 'unknown') AS requester_email,
+         COALESCE(e.name, 'Organization Workspace') AS event_name
+       FROM public.access_requests ar
+       LEFT JOIN public.auth_users au ON au.user_id = ar.requester_user_id
+       LEFT JOIN public.events e ON e.id = ar.event_id
+       WHERE ar.owner_user_id = $1
+         AND ar.status = 'pending'
+       ORDER BY ar.created_at DESC
        LIMIT 50`,
       [ownerId],
     );
 
-    const enriched = await Promise.all(
-      requests.map(async (r) => {
-        const requesterEmail = await getAdminUserEmailById(r.requester_user_id);
-        if (!r.event_id) {
-          return {
-            ...r,
-            requester_email: requesterEmail || "unknown",
-            event_name: "Organization Workspace",
-          };
-        }
-        const eventData = await queryNeonOne<{ name: string }>(
-          `SELECT name FROM public.events WHERE id = $1`,
-          [r.event_id],
-        );
-        return {
-          ...r,
-          requester_email: requesterEmail || "unknown",
-          event_name: eventData?.name || "Organization Workspace",
-        };
-      }),
-    );
-
-    return NextResponse.json({ data: enriched }, { status: 200 });
+    return NextResponse.json({ data: requests }, { status: 200 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to load inbox.";
     return NextResponse.json({ error: message }, { status: 500 });

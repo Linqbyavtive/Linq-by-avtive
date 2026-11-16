@@ -43,11 +43,8 @@ export async function GET(req: Request) {
   try {
     const cookieStore = await cookies();
     return await withApiTenantContext(cookieStore, async () => {
-      const [session, authUserId] = await Promise.all([
-        getServerAuthSession(),
-        getServerUserIdFromCookies(cookieStore),
-      ]);
-      const viewerId = String(authUserId || session?.user?.id || "").trim();
+      const session = await getServerAuthSession();
+      const viewerId = String(session?.user?.id || "").trim() || (await getServerUserIdFromCookies(cookieStore, session));
       if (!viewerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       const sessionRole = String(session?.user?.role || "").toLowerCase();
       const sessionEmail = String(session?.user?.email || "").toLowerCase().trim();
@@ -196,7 +193,6 @@ export async function POST(req: Request) {
 
     const MAX_RETRIES = 5;
     let row: { id: string; short_id: string } | null = null;
-    let lastError: unknown = null;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       // 12-char unique hex string per iteration
@@ -237,7 +233,6 @@ export async function POST(req: Request) {
           break;
         }
       } catch (insertError: unknown) {
-        lastError = insertError;
         console.error(`[DB Insert Attempt ${attempt} Error]:`, insertError);
 
         const errObj = insertError as { code?: string; message?: string };

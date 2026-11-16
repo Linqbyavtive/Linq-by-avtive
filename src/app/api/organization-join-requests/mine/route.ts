@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { queryNeon } from "@/lib/neon-db";
 import { getServerUserIdFromCookies } from "@/lib/auth-server";
-import { getAdminUserEmailById } from "@/lib/admin";
+import { getServerAuthSession } from "@/auth";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const data = await queryNeon<{
+    const rows = await queryNeon<{
       id: string;
       owner_user_id: string;
       requested_org_name: string;
@@ -19,23 +20,24 @@ export async function GET() {
       reviewed_at: string | null;
       reapply_after: string | null;
       rejection_reason: string | null;
+      owner_email: string;
     }>(
-      `SELECT id, owner_user_id, requested_org_name, status, created_at, reviewed_at, reapply_after, rejection_reason
-       FROM public.organization_join_requests
-       WHERE requester_user_id = $1
-       ORDER BY created_at DESC
+      `SELECT 
+         ojr.id, 
+         ojr.owner_user_id, 
+         ojr.requested_org_name, 
+         ojr.status, 
+         ojr.created_at, 
+         ojr.reviewed_at, 
+         ojr.reapply_after, 
+         ojr.rejection_reason,
+         COALESCE(au.email, 'unknown') AS owner_email
+       FROM public.organization_join_requests ojr
+       LEFT JOIN public.auth_users au ON au.user_id = ojr.owner_user_id
+       WHERE ojr.requester_user_id = $1
+       ORDER BY ojr.created_at DESC
        LIMIT 20`,
       [userId],
-    );
-
-    const rows = await Promise.all(
-      data.map(async (row) => {
-        const ownerEmail = await getAdminUserEmailById(row.owner_user_id);
-        return {
-          ...row,
-          owner_email: ownerEmail || "unknown",
-        };
-      }),
     );
 
     return NextResponse.json({ data: rows }, { status: 200 });

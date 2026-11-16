@@ -135,7 +135,7 @@ const CrowdCanvas = ({
     // Mobile-optimized crowd capacity: fewer active sprites on small screens to conserve CPU and avoid clutter
     const initCrowd = () => {
       const isMobile = stage.width < 640;
-      const targetCount = isMobile ? Math.min(38, allPeeps.length) : allPeeps.length;
+      const targetCount = isMobile ? Math.min(24, allPeeps.length) : Math.min(48, allPeeps.length);
 
       while (availablePeeps.length && crowd.length < targetCount) {
         const added = addPeepToCrowd();
@@ -202,6 +202,7 @@ const CrowdCanvas = ({
     let seen = false;
 
     const onMove = (e: PointerEvent) => {
+      if (!isVisible || disposed) return;
       const r = wrap.getBoundingClientRect();
       target.x = e.clientX - r.left;
       target.y = e.clientY - r.top;
@@ -306,11 +307,23 @@ const CrowdCanvas = ({
       }
     };
 
+    img.decoding = "async";
     img.src = src;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopTicker();
+        crowd.forEach((p) => p.walk?.pause());
+      } else if (isVisible && !reduceMotion) {
+        startTicker();
+        crowd.forEach((p) => p.walk?.resume());
+      }
+    };
 
     window.addEventListener("resize", resize, { passive: true });
     window.addEventListener("pointermove", onMove, { passive: true });
     document.documentElement.addEventListener("pointerleave", onLeave, { passive: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       disposed = true;
@@ -318,6 +331,7 @@ const CrowdCanvas = ({
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);
       document.documentElement.removeEventListener("pointerleave", onLeave);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopTicker();
       crowd.forEach((p) => p.walk?.kill());
     };

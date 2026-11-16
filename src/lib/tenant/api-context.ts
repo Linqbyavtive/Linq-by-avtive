@@ -44,12 +44,12 @@ export async function resolveTenantContextFromCookies(
 
 export async function withApiTenantContext<T>(
   cookieStore: ReadonlyRequestCookies,
-  fn: () => Promise<T>,
+  fn: (context: TenantContext) => Promise<T>,
   options?: { allowAdminBypass?: boolean },
 ): Promise<T> {
   const context = await resolveTenantContextFromCookies(cookieStore, options);
   if (!context) {
     throw new ApiUnauthorizedError();
   }
-  return runWithTenantContextAsync(context, fn);
+  return runWithTenantContextAsync(context, () => fn(context));
 }

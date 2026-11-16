@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { queryNeonOne } from "@/lib/neon-db";
 import { getServerUserIdFromCookies } from "@/lib/auth-server";
+import { getServerAuthSession } from "@/auth";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const orgRow = await queryNeonOne<{

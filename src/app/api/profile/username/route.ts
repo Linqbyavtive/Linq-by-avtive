@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { queryNeon, queryNeonOne, updateRows } from "@/lib/neon-db";
 import { normalizeOrganizationName, toOrganizationKey } from "@/lib/organization/normalize";
 import { getServerUserIdFromCookies } from "@/lib/auth-server";
+import { getServerAuthSession } from "@/auth";
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_.]+$/;
 const USERNAME_CHANGE_COOLDOWN_DAYS = 24;
@@ -51,7 +52,8 @@ export async function PATCH(req: Request) {
     }
 
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -234,7 +236,8 @@ export async function PATCH(req: Request) {
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

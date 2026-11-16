@@ -1,7 +1,4 @@
-import {
-  neon,
-  type NeonQueryFunction,
-} from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
 import { Pool, type QueryResultRow } from "pg";
 import { logger } from "@/lib/logger-server";
 

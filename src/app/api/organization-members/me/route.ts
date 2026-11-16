@@ -12,9 +12,9 @@ export async function GET() {
   await enterServerLogContext();
   try {
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const userEmail = String(session?.user?.email || "").toLowerCase().trim();
 
     // 1. Try lookup by UUID first

@@ -2,37 +2,36 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { queryNeon } from "@/lib/neon-db";
 import { getServerUserIdFromCookies } from "@/lib/auth-server";
-import { getAdminUserEmailById } from "@/lib/admin";
+import { getServerAuthSession } from "@/auth";
 
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const userId = await getServerUserIdFromCookies(cookieStore);
+    const session = await getServerAuthSession();
+    const userId = session?.user?.id || (await getServerUserIdFromCookies(cookieStore, session));
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const data = await queryNeon<{
+    const rows = await queryNeon<{
       id: string;
       requester_user_id: string;
       requested_org_name: string;
       status: string;
       created_at: string;
+      requester_email: string;
     }>(
-      `SELECT id, requester_user_id, requested_org_name, status, created_at
-       FROM public.organization_join_requests
-       WHERE owner_user_id = $1
-         AND status = 'pending'
-       ORDER BY created_at DESC`,
+      `SELECT 
+         ojr.id, 
+         ojr.requester_user_id, 
+         ojr.requested_org_name, 
+         ojr.status, 
+         ojr.created_at,
+         COALESCE(au.email, 'unknown') AS requester_email
+       FROM public.organization_join_requests ojr
+       LEFT JOIN public.auth_users au ON au.user_id = ojr.requester_user_id
+       WHERE ojr.owner_user_id = $1
+         AND ojr.status = 'pending'
+       ORDER BY ojr.created_at DESC`,
       [userId],
-    );
-
-    const rows = await Promise.all(
-      data.map(async (row) => {
-        const requesterEmail = await getAdminUserEmailById(row.requester_user_id);
-        return {
-          ...row,
-          requester_email: requesterEmail || "unknown",
-        };
-      }),
     );
 
     return NextResponse.json({ data: rows }, { status: 200 });
