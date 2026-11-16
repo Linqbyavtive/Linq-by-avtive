@@ -148,7 +148,7 @@ function getInitialEditorForm(
         initialData = { ...initialData, ...parsed };
       }
     }
-  } catch {}
+  } catch { }
 
   return initialData;
 }
@@ -521,11 +521,10 @@ export function PromotionChannelSelect({
                 key={ch.id}
                 type="button"
                 onClick={() => handleChannelTabChange(ch.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${isActive
                     ? "bg-white text-heading shadow-xs border border-border/80 ring-1 ring-black/5"
                     : "text-muted hover:text-heading hover:bg-slate-100/70 border border-transparent"
-                }`}
+                  }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? "text-primary" : "text-muted"}`} />
                 <span>{ch.label}</span>
@@ -717,22 +716,20 @@ export function PromotionChannelSelect({
               <button
                 type="button"
                 onClick={() => setMobileTab("edit")}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
-                  mobileTab === "edit"
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${mobileTab === "edit"
                     ? "bg-white text-heading shadow-xs font-semibold"
                     : "text-muted hover:text-heading"
-                }`}
+                  }`}
               >
                 Edit Form
               </button>
               <button
                 type="button"
                 onClick={() => setMobileTab("preview")}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
-                  mobileTab === "preview"
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${mobileTab === "preview"
                     ? "bg-white text-heading shadow-xs font-semibold"
                     : "text-muted hover:text-heading"
-                }`}
+                  }`}
               >
                 Live Preview
               </button>
@@ -766,9 +763,8 @@ export function PromotionChannelSelect({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* LEFT COLUMN: Editing Form */}
             <div
-              className={`lg:col-span-6 flex flex-col gap-5 bg-white border border-border/60 rounded-xl p-6 shadow-xs ${
-                mobileTab === "preview" ? "hidden lg:flex" : "flex"
-              }`}
+              className={`lg:col-span-6 flex flex-col gap-5 bg-white border border-border/60 rounded-xl p-6 shadow-xs ${mobileTab === "preview" ? "hidden lg:flex" : "flex"
+                }`}
             >
               {/* Hidden Global File Input for Browse/Extract */}
               <input
@@ -803,11 +799,10 @@ export function PromotionChannelSelect({
                       key={th.id}
                       type="button"
                       onClick={() => setForm((prev) => ({ ...prev, theme: th.id }))}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-all cursor-pointer ${
-                        form.theme === th.id
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border transition-all cursor-pointer ${form.theme === th.id
                           ? "border-primary bg-primary/10 text-primary shadow-2xs font-semibold ring-1 ring-primary/30"
                           : "border-border/60 bg-white text-muted hover:text-heading hover:border-border"
-                      }`}
+                        }`}
                     >
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
@@ -1262,9 +1257,8 @@ export function PromotionChannelSelect({
 
             {/* RIGHT COLUMN: Live Preview Canvas */}
             <div
-              className={`lg:col-span-6 flex flex-col items-center bg-slate-50/70 border border-border/60 rounded-xl p-6 shadow-xs ${
-                mobileTab === "edit" ? "hidden lg:flex" : "flex"
-              }`}
+              className={`lg:col-span-6 flex flex-col items-center bg-slate-50/70 border border-border/60 rounded-xl p-6 shadow-xs ${mobileTab === "edit" ? "hidden lg:flex" : "flex"
+                }`}
             >
               <div className="w-full flex items-center justify-between mb-4 pb-3 border-b border-border/40">
                 <span className="text-xs font-semibold text-heading flex items-center gap-1.5">

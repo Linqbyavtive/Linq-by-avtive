@@ -447,32 +447,32 @@ function DynamicNeonCurvesHorizontal({ palette }: { palette: NeonPalette }) {
       </g>
 
       {/* High Arc Ribbon */}
-      <path d="M 1200,15 C 1070,40 980,110 930,190 C 880,270 850,330 810,380" 
-            stroke="url(#gradArcH)" strokeWidth="4.5" fill="none" filter="url(#glowArcH)" />
-      <path d="M 1200,22 C 1065,50 975,120 925,200 C 875,280 845,340 805,390" 
-            stroke="#FFE6A0" strokeWidth="1.5" fill="none" opacity="0.8" />
+      <path d="M 1200,15 C 1070,40 980,110 930,190 C 880,270 850,330 810,380"
+        stroke="url(#gradArcH)" strokeWidth="4.5" fill="none" filter="url(#glowArcH)" />
+      <path d="M 1200,22 C 1065,50 975,120 925,200 C 875,280 845,340 805,390"
+        stroke="#FFE6A0" strokeWidth="1.5" fill="none" opacity="0.8" />
 
       {/* Ambient Sweeping Ribbon */}
-      <path d="M 1200,240 C 1000,320 840,430 700,510 C 580,580 430,620 280,628" 
-            stroke="url(#gradWaveH)" strokeWidth="8" fill="none" opacity="0.45" filter="url(#glowPrimaryH)" />
+      <path d="M 1200,240 C 1000,320 840,430 700,510 C 580,580 430,620 280,628"
+        stroke="url(#gradWaveH)" strokeWidth="8" fill="none" opacity="0.45" filter="url(#glowPrimaryH)" />
 
       {/* Primary Laser Ribbon */}
-      <path d="M 1200,110 C 1010,165 870,275 770,405 C 670,535 520,615 300,628" 
-            stroke="url(#gradPrimaryH)" strokeWidth="6" fill="none" filter="url(#glowPrimaryH)" />
-      <path d="M 1200,112 C 1008,167 868,276 768,406 C 668,536 518,616 298,628" 
-            stroke={palette.primaryCore} strokeWidth="2" fill="none" opacity="0.9" />
+      <path d="M 1200,110 C 1010,165 870,275 770,405 C 670,535 520,615 300,628"
+        stroke="url(#gradPrimaryH)" strokeWidth="6" fill="none" filter="url(#glowPrimaryH)" />
+      <path d="M 1200,112 C 1008,167 868,276 768,406 C 668,536 518,616 298,628"
+        stroke={palette.primaryCore} strokeWidth="2" fill="none" opacity="0.9" />
 
       {/* Secondary Ribbon */}
-      <path d="M 1200,210 C 970,275 830,375 730,485 C 630,595 490,625 360,628" 
-            stroke="url(#gradSecondaryH)" strokeWidth="7" fill="none" filter="url(#glowSecondaryH)" />
-      <path d="M 1200,212 C 968,277 828,376 728,486 C 628,596 488,626 358,628" 
-            stroke={palette.secondaryCore} strokeWidth="2" fill="none" opacity="0.85" />
+      <path d="M 1200,210 C 970,275 830,375 730,485 C 630,595 490,625 360,628"
+        stroke="url(#gradSecondaryH)" strokeWidth="7" fill="none" filter="url(#glowSecondaryH)" />
+      <path d="M 1200,212 C 968,277 828,376 728,486 C 628,596 488,626 358,628"
+        stroke={palette.secondaryCore} strokeWidth="2" fill="none" opacity="0.85" />
 
       {/* Bottom Flare */}
-      <path d="M 680,530 C 590,590 480,625 380,628" 
-            stroke={palette.flare} strokeWidth="12" fill="none" opacity="0.6" filter="url(#glowSecondaryH)" />
-      <path d="M 670,535 C 585,593 478,626 385,628" 
-            stroke="#FFFFFF" strokeWidth="2.5" fill="none" opacity="0.9" />
+      <path d="M 680,530 C 590,590 480,625 380,628"
+        stroke={palette.flare} strokeWidth="12" fill="none" opacity="0.6" filter="url(#glowSecondaryH)" />
+      <path d="M 670,535 C 585,593 478,626 385,628"
+        stroke="#FFFFFF" strokeWidth="2.5" fill="none" opacity="0.9" />
 
       {/* Sparkles */}
       <circle cx="890" cy="180" r="2" fill="#FFFFFF" opacity="0.9" />
@@ -623,20 +623,20 @@ function DynamicNeonCurvesVertical({ palette }: { palette: NeonPalette }) {
       </g>
 
       {/* Arc Ribbon */}
-      <path d="M 576,360 C 490,410 400,530 330,680" 
-            stroke="url(#gradArcV)" strokeWidth="4.5" fill="none" filter="url(#glowArcV)" />
+      <path d="M 576,360 C 490,410 400,530 330,680"
+        stroke="url(#gradArcV)" strokeWidth="4.5" fill="none" filter="url(#glowArcV)" />
 
       {/* Primary Laser Ribbon */}
-      <path d="M 576,430 C 440,510 320,690 220,850 C 150,950 80,1000 0,1024" 
-            stroke="url(#gradPrimaryV)" strokeWidth="6.5" fill="none" filter="url(#glowPrimaryV)" />
-      <path d="M 576,432 C 438,512 318,692 218,852 C 148,952 78,1002 0,1024" 
-            stroke={palette.primaryCore} strokeWidth="2" fill="none" opacity="0.9" />
+      <path d="M 576,430 C 440,510 320,690 220,850 C 150,950 80,1000 0,1024"
+        stroke="url(#gradPrimaryV)" strokeWidth="6.5" fill="none" filter="url(#glowPrimaryV)" />
+      <path d="M 576,432 C 438,512 318,692 218,852 C 148,952 78,1002 0,1024"
+        stroke={palette.primaryCore} strokeWidth="2" fill="none" opacity="0.9" />
 
       {/* Secondary Ribbon */}
-      <path d="M 576,530 C 420,620 280,780 180,920 C 120,990 60,1020 0,1024" 
-            stroke="url(#gradSecondaryV)" strokeWidth="7" fill="none" filter="url(#glowSecondaryV)" />
-      <path d="M 576,532 C 418,622 278,782 178,922 C 118,992 58,1022 0,1024" 
-            stroke={palette.secondaryCore} strokeWidth="2" fill="none" opacity="0.85" />
+      <path d="M 576,530 C 420,620 280,780 180,920 C 120,990 60,1020 0,1024"
+        stroke="url(#gradSecondaryV)" strokeWidth="7" fill="none" filter="url(#glowSecondaryV)" />
+      <path d="M 576,532 C 418,622 278,782 178,922 C 118,992 58,1022 0,1024"
+        stroke={palette.secondaryCore} strokeWidth="2" fill="none" opacity="0.85" />
 
       {/* Sparkles */}
       <circle cx="370" cy="620" r="2.5" fill={palette.primary} opacity="0.9" filter="url(#glowPrimaryV)" />
@@ -693,9 +693,8 @@ function SponsorStripRow({
 
   return (
     <div
-      className={`flex h-full w-full max-w-full flex-nowrap items-center ${
-        count === 1 ? "justify-start" : "justify-start gap-[28px]"
-      }`}
+      className={`flex h-full w-full max-w-full flex-nowrap items-center ${count === 1 ? "justify-start" : "justify-start gap-[28px]"
+        }`}
       style={{
         maxWidth: maxStripWidthPx,
       }}
@@ -901,7 +900,7 @@ export function CardPreview({
   const verticalTextColor = verticalTextColorOverride || (theme.textColor || "#FFFFFF");
   const hasHorizontalTextOverride = Boolean(horizontalTextColorOverride);
   const hasVerticalTextOverride = Boolean(verticalTextColorOverride);
-  
+
   const storedFontKey = String(data.fontFamily || "inter").trim() || "inter";
   const googleFamily = parseGoogleFamilyFromStored(storedFontKey);
 
@@ -1004,12 +1003,12 @@ export function CardPreview({
   // ==========================================
   if (isVertical) {
     return (
-      <div 
+      <div
         id={id}
         className={`relative overflow-hidden shadow-2xl bg-[#04060A] ${surfaceMotionClass}`}
-        style={{ 
-          width: "576px", 
-          height: "1024px", 
+        style={{
+          width: "576px",
+          height: "1024px",
           fontFamily: selectedFont,
         }}
       >
@@ -1017,7 +1016,7 @@ export function CardPreview({
         <DynamicNeonCurvesVertical palette={palette} />
 
         {/* Dynamic Atmospheric Spotlight */}
-        <div 
+        <div
           className="absolute left-1/2 top-[550px] h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.14] blur-[90px] pointer-events-none mix-blend-screen z-0"
           style={{ background: palette.spotlight1 }}
         />
@@ -1038,13 +1037,13 @@ export function CardPreview({
 
         {/* Top-Left: MEET YOU AT [LOCATION] */}
         <div className="absolute left-[36px] top-[46px] z-10 flex flex-col">
-          <p 
+          <p
             className="m-0 text-[26px] font-extrabold tracking-[0.5px] uppercase leading-none"
             style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
           >
             MEET YOU AT
           </p>
-          <h2 
+          <h2
             className="m-0 mt-[6px] text-[46px] font-black tracking-tight uppercase leading-none"
             style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
           >
@@ -1055,9 +1054,9 @@ export function CardPreview({
         {/* Badge Pill & Event Name Row */}
         <div className="absolute left-[36px] top-[148px] z-10 flex flex-col gap-[12px] max-w-[504px]">
           <div className="flex items-center gap-[12px] flex-wrap">
-            <div 
+            <div
               className="flex items-center justify-center px-[18px] py-[8px] rounded-[6px] shadow-sm shrink-0"
-              style={{ 
+              style={{
                 backgroundColor: palette.pillBg,
                 border: `1px solid ${palette.pillBorder}`,
               }}
@@ -1067,7 +1066,7 @@ export function CardPreview({
               </span>
             </div>
           </div>
-          <h1 
+          <h1
             className="m-0 text-[28px] font-black tracking-tight uppercase leading-tight text-white"
             style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
           >
@@ -1082,7 +1081,7 @@ export function CardPreview({
 
         {/* Date, Time & Tagline */}
         <div className="absolute left-[36px] top-[265px] z-10 flex flex-col">
-          <p 
+          <p
             className="m-0 text-[20px] font-bold leading-tight"
             style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
           >
@@ -1091,7 +1090,7 @@ export function CardPreview({
           <p className="m-0 mt-[3px] text-[16px] font-normal text-slate-300 leading-tight">
             ({sessionTimeLabel})
           </p>
-          <p 
+          <p
             className="m-0 mt-[14px] text-[18px] font-medium tracking-[1.2px] uppercase leading-none text-white/90"
             style={{ color: hasVerticalTextOverride ? verticalTextColor : undefined }}
           >
@@ -1105,11 +1104,11 @@ export function CardPreview({
             {/* Circular Photo */}
             <div className={`relative flex h-[175px] w-[175px] shrink-0 items-center justify-center overflow-hidden rounded-full border-[3px] border-white/20 shadow-2xl ${hasRealPhoto ? "bg-white/10" : "bg-slate-900"}`}>
               {hasRealPhoto ? (
-                <img 
-                  src={photoUrl} 
+                <img
+                  src={photoUrl}
                   alt={attendeeName ? `Photo of ${attendeeName}` : "Attendee photo"}
-                  className="h-full w-full object-cover" 
-                  crossOrigin="anonymous" 
+                  className="h-full w-full object-cover"
+                  crossOrigin="anonymous"
                 />
               ) : (
                 <DefaultAvatarPlaceholder className="h-full w-full object-cover" />
@@ -1118,14 +1117,14 @@ export function CardPreview({
 
             {/* Attendee Details */}
             <div className="mt-[20px] flex flex-col items-center text-center w-full px-4">
-              <h2 
+              <h2
                 className="m-0 text-[32px] font-black leading-[1.15] tracking-tight"
                 style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
               >
                 {attendeeName || "Attendee"}
               </h2>
               {attendeeRole && (
-                <p 
+                <p
                   className="m-0 mt-[6px] text-[18px] font-bold text-white/90 leading-tight uppercase tracking-wide"
                   style={{ color: hasVerticalTextOverride ? verticalTextColor : undefined }}
                 >
@@ -1133,7 +1132,7 @@ export function CardPreview({
                 </p>
               )}
               {attendeeCompany && (
-                <p 
+                <p
                   className="m-0 mt-[4px] text-[16px] font-normal text-white/75 leading-tight"
                   style={{ color: hasVerticalTextOverride ? verticalTextColor : undefined }}
                 >
@@ -1163,9 +1162,9 @@ export function CardPreview({
         ) : (
           <div className="absolute left-1/2 top-[330px] -translate-x-1/2 z-10 flex flex-col items-center text-center w-[480px] px-6">
             <div className="flex flex-col items-center justify-center p-7 rounded-3xl bg-white/5 border border-white/15 backdrop-blur-md shadow-2xl w-full max-w-[380px]">
-              <div 
+              <div
                 className="flex items-center justify-center px-[20px] py-[8px] rounded-[6px] shadow-sm mb-3"
-                style={{ 
+                style={{
                   backgroundColor: palette.pillBg,
                   border: `1px solid ${palette.pillBorder}`,
                 }}
@@ -1191,7 +1190,7 @@ export function CardPreview({
               <p className="m-0 mt-[10px] text-[14px] font-bold text-cyan-300 tracking-wide uppercase text-center leading-tight">
                 Scan to Connect & Check In
               </p>
-              <h2 
+              <h2
                 className="m-0 mt-[6px] text-[26px] font-black leading-tight tracking-tight truncate max-w-[340px]"
                 style={{ color: hasVerticalTextOverride ? verticalTextColor : "#FFFFFF" }}
               >
@@ -1251,7 +1250,7 @@ export function CardPreview({
       <DynamicNeonCurvesHorizontal palette={palette} />
 
       {/* Dynamic Atmospheric Spotlight */}
-      <div 
+      <div
         className="absolute left-[700px] top-[300px] h-[750px] w-[750px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-[0.14] blur-[100px] pointer-events-none mix-blend-screen z-0"
         style={{ background: palette.spotlight1 }}
       />
@@ -1272,13 +1271,13 @@ export function CardPreview({
 
       {/* Top-Left: MEET YOU AT [LOCATION] */}
       <div className="absolute left-[64px] top-[54px] z-10 flex flex-col">
-        <p 
+        <p
           className="m-0 text-[32px] font-extrabold tracking-[0.5px] uppercase leading-none"
           style={{ color: hasHorizontalTextOverride ? horizontalTextColor : "#FFFFFF" }}
         >
           MEET YOU AT
         </p>
-        <h2 
+        <h2
           className="m-0 mt-[6px] text-[54px] font-black tracking-tight uppercase leading-none"
           style={{ color: hasHorizontalTextOverride ? horizontalTextColor : "#FFFFFF" }}
         >
@@ -1289,9 +1288,9 @@ export function CardPreview({
       {/* Mid-Left: Badge Pill & Event Name Row */}
       <div className="absolute left-[64px] top-[216px] z-10 flex items-center gap-[20px] max-w-[720px]">
         {/* Badge Pill */}
-        <div 
+        <div
           className="flex items-center justify-center px-[22px] py-[10px] rounded-[6px] shadow-sm shrink-0"
-          style={{ 
+          style={{
             backgroundColor: palette.pillBg,
             border: `1px solid ${palette.pillBorder}`,
           }}
@@ -1302,7 +1301,7 @@ export function CardPreview({
         </div>
 
         {/* Event Name */}
-        <h1 
+        <h1
           className="m-0 text-[34px] font-black tracking-[0.5px] uppercase leading-none truncate max-w-[480px]"
           style={{ color: hasHorizontalTextOverride ? horizontalTextColor : "#FFFFFF" }}
           title={data.eventName || "SAFAR-E-KARAKORAM"}
@@ -1318,7 +1317,7 @@ export function CardPreview({
 
       {/* Date & Time Block */}
       <div className="absolute left-[64px] top-[338px] z-10 flex flex-col">
-        <p 
+        <p
           className="m-0 text-[23px] font-bold leading-tight"
           style={{ color: hasHorizontalTextOverride ? horizontalTextColor : "#FFFFFF" }}
         >
@@ -1331,7 +1330,7 @@ export function CardPreview({
 
       {/* Tagline */}
       <div className="absolute left-[64px] top-[426px] z-10">
-        <p 
+        <p
           className="m-0 text-[21px] font-medium tracking-[1.5px] uppercase leading-none text-white/95"
           style={{ color: hasHorizontalTextOverride ? horizontalTextColor : undefined }}
         >
@@ -1373,7 +1372,7 @@ export function CardPreview({
 
         {/* Attendee Details */}
         <div className="mt-[18px] flex flex-col items-center text-center w-full px-2">
-          <h2 
+          <h2
             className="m-0 text-[32px] font-black leading-[1.15] tracking-tight truncate max-w-[340px]"
             style={{ color: hasHorizontalTextOverride ? horizontalTextColor : "#FFFFFF" }}
             title={attendeeName || "Attendee"}
@@ -1381,7 +1380,7 @@ export function CardPreview({
             {attendeeName || "Attendee"}
           </h2>
           {attendeeRole && (
-            <p 
+            <p
               className="m-0 mt-[6px] text-[19px] font-bold text-white/90 leading-tight uppercase tracking-wide truncate max-w-[340px]"
               style={{ color: hasHorizontalTextOverride ? horizontalTextColor : undefined }}
             >
@@ -1389,7 +1388,7 @@ export function CardPreview({
             </p>
           )}
           {attendeeCompany && (
-            <p 
+            <p
               className="m-0 mt-[4px] text-[17px] font-normal text-white/75 leading-tight truncate max-w-[340px]"
               style={{ color: hasHorizontalTextOverride ? horizontalTextColor : undefined }}
             >

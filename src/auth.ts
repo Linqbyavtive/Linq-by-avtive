@@ -40,16 +40,16 @@ export const getServerAuthSession = cache(async (): Promise<AppAuthSession | nul
       // Just-in-time provisioning: ensure Supabase user exists in internal auth_users & profiles
       const username = String(
         user.user_metadata?.username ||
-          user.user_metadata?.name ||
-          email.split("@")[0] ||
-          "user",
+        user.user_metadata?.name ||
+        email.split("@")[0] ||
+        "user",
       )
         .trim()
         .toLowerCase();
       const orgName = String(
         user.user_metadata?.organizationName ||
-          user.user_metadata?.organization_name ||
-          "",
+        user.user_metadata?.organization_name ||
+        "",
       ).trim();
 
       try {

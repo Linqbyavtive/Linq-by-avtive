@@ -219,3 +219,4 @@ export function isValidCssColor(color?: string): boolean {
   if (!s) return false;
   return parseColorLuminance(s) !== null;
 }
+
